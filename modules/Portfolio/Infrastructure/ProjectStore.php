@@ -6,6 +6,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
 use Modules\Portfolio\Contracts\ProjectKeyUnavailable;
+use Modules\Portfolio\Contracts\ProjectRuleViolation;
 use Modules\Portfolio\Contracts\ProjectSummary;
 
 /**
@@ -102,13 +103,54 @@ final class ProjectStore
 
     public function addMember(string $projectId, string $membershipId, string $role, string $assignedByMembershipId): bool
     {
-        return $this->connection()->selectOne(
+        return $this->guarded(fn () => $this->connection()->selectOne(
             'insert into portfolio.project_members (organization_id, project_id, membership_id, role, assigned_by_membership_id)
              values (platform.current_organization_id(), ?::uuid, ?::uuid, ?, ?::uuid)
              on conflict (organization_id, project_id, membership_id) where removed_at is null do nothing
              returning id',
             [$projectId, $membershipId, $role, $assignedByMembershipId]
-        ) !== null;
+        ) !== null);
+    }
+
+    public function removeMember(string $projectId, string $membershipId, string $removedByMembershipId): int
+    {
+        return $this->connection()->update(
+            "update portfolio.project_members set removed_at = now(), removed_by_membership_id = ?::uuid, removed_reason = 'removed'
+              where project_id = ?::uuid and membership_id = ?::uuid and removed_at is null",
+            [$removedByMembershipId, $projectId, $membershipId]
+        );
+    }
+
+    /** Role of the active project membership, locked for the rest of the transaction. */
+    public function lockMemberRole(string $projectId, string $membershipId): ?string
+    {
+        $row = $this->connection()->selectOne(
+            'select role from portfolio.project_members
+              where project_id = ?::uuid and membership_id = ?::uuid and removed_at is null for update',
+            [$projectId, $membershipId]
+        );
+
+        return $row === null ? null : (string) ((array) $row)['role'];
+    }
+
+    public function linkTeam(string $projectId, string $teamId, string $linkedByMembershipId): bool
+    {
+        return $this->guarded(fn () => $this->connection()->selectOne(
+            'insert into portfolio.project_team_links (organization_id, project_id, team_id, linked_by_membership_id)
+             values (platform.current_organization_id(), ?::uuid, ?::uuid, ?::uuid)
+             on conflict (organization_id, project_id, team_id) where unlinked_at is null do nothing
+             returning id',
+            [$projectId, $teamId, $linkedByMembershipId]
+        ) !== null);
+    }
+
+    public function unlinkTeam(string $projectId, string $teamId, string $unlinkedByMembershipId): int
+    {
+        return $this->connection()->update(
+            'update portfolio.project_team_links set unlinked_at = now(), unlinked_by_membership_id = ?::uuid
+              where project_id = ?::uuid and team_id = ?::uuid and unlinked_at is null',
+            [$unlinkedByMembershipId, $projectId, $teamId]
+        );
     }
 
     public function isActiveMember(string $projectId, string $membershipId, ?string $role = null): bool
@@ -127,6 +169,30 @@ final class ProjectStore
               where membership_id = ?::uuid and removed_at is null",
             [$removedByMembershipId, $membershipId]
         );
+    }
+
+    /**
+     * Savepoint around inserts guarded by triggers and foreign keys, so a
+     * rejected row maps to a domain error without aborting the caller.
+     *
+     * @template TResult
+     *
+     * @param  \Closure(): TResult  $operation
+     * @return TResult
+     */
+    private function guarded(\Closure $operation): mixed
+    {
+        try {
+            return $this->connection()->transaction($operation);
+        } catch (QueryException $exception) {
+            $state = $exception->errorInfo[0] ?? null;
+
+            throw match (true) {
+                $state === '23514' && str_contains($exception->getMessage(), 'project must not be archived') => ProjectRuleViolation::because(ProjectRuleViolation::ARCHIVED),
+                $state === '23503' && str_contains($exception->getMessage(), 'project_team_links_team_fk') => ProjectRuleViolation::because(ProjectRuleViolation::TEAM),
+                default => $exception,
+            };
+        }
     }
 
     public static function isUuid(?string $value): bool

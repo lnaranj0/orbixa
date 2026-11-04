@@ -11,8 +11,10 @@ use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Contracts\Tenancy\TenantContextRequired;
 use Modules\Portfolio\Contracts\ProjectNotFound;
 use Modules\Portfolio\Contracts\ProjectOperationDenied;
+use Modules\Portfolio\Contracts\ProjectRuleViolation;
 use Modules\Portfolio\Contracts\ProjectVisibility;
 use Modules\Portfolio\Infrastructure\ProjectStore;
+use Modules\Teams\Contracts\TeamDirectory;
 
 /**
  * Authorization for project management (D4, D5). A project the actor cannot
@@ -26,6 +28,7 @@ final class ProjectGuard
         private readonly CurrentMembership $memberships,
         private readonly Gate $gate,
         private readonly ProjectVisibility $visibility,
+        private readonly TeamDirectory $teams,
     ) {}
 
     /** @return string actor membership id */
@@ -52,5 +55,33 @@ final class ProjectGuard
         if (! $this->gate->forUser($actor)->allows(Permission::ProjectsManage->value, [Scope::project($projectId)])) {
             throw ProjectOperationDenied::because('projects.manage is required.');
         }
+    }
+
+    /** Organization-level only: appointing or removing managers (D6). */
+    public function managesOrganizationProjects(Authenticatable $actor): bool
+    {
+        return $this->gate->forUser($actor)->allows(Permission::ProjectsManage->value);
+    }
+
+    /**
+     * Linking needs teams.manage over the team too (D6). A team the actor
+     * belongs to but cannot manage is "denied" (403); a missing, foreign,
+     * archived or otherwise unmanageable team is one generic 422.
+     */
+    public function requireLinkableTeam(Authenticatable $actor, string $actorMembershipId, string $teamId): void
+    {
+        if (! ProjectStore::isUuid($teamId) || ! $this->teams->isActive($teamId)) {
+            throw ProjectRuleViolation::because(ProjectRuleViolation::TEAM);
+        }
+
+        if ($this->gate->forUser($actor)->allows(Permission::TeamsManage->value, [Scope::team($teamId)])) {
+            return;
+        }
+
+        if (in_array($teamId, $this->teams->activeTeamIdsOf($actorMembershipId), true)) {
+            throw ProjectOperationDenied::because('teams.manage over the team is required.');
+        }
+
+        throw ProjectRuleViolation::because(ProjectRuleViolation::TEAM);
     }
 }

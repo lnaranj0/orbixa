@@ -9,8 +9,11 @@ use Modules\IdentityTenancy\Contracts\MembershipChangeDenied;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
 use Modules\Platform\Presentation\Http\Middleware\AssignCorrelationId;
 use Modules\Portfolio\Contracts\ProjectKeyUnavailable;
+use Modules\Portfolio\Contracts\ProjectLinkNotFound;
+use Modules\Portfolio\Contracts\ProjectMemberNotFound;
 use Modules\Portfolio\Contracts\ProjectNotFound;
 use Modules\Portfolio\Contracts\ProjectOperationDenied;
+use Modules\Portfolio\Contracts\ProjectRuleViolation;
 use Modules\Portfolio\Contracts\ProjectVersionConflict;
 use Modules\Teams\Contracts\HierarchyViolation;
 use Modules\Teams\Contracts\TeamMemberNotFound;
@@ -44,6 +47,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(ProjectNotFound::class, fn (ProjectNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(ProjectOperationDenied::class, fn (ProjectOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(ProjectKeyUnavailable::class, fn (ProjectKeyUnavailable $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
+        $exceptions->map(ProjectMemberNotFound::class, fn (ProjectMemberNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(ProjectLinkNotFound::class, fn (ProjectLinkNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(ProjectRuleViolation::class, fn (ProjectRuleViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
         $exceptions->map(ProjectVersionConflict::class, fn (ProjectVersionConflict $e) => new ConflictHttpException($e->getMessage(), $e));
 
         $exceptions->shouldRenderJsonWhen(
