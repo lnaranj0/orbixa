@@ -7,7 +7,6 @@ use Modules\Platform\Contracts\Idempotency\IdempotencyStore;
 use Modules\Platform\Contracts\Tenancy\AdmissionVerifier;
 use Modules\Platform\Contracts\Tenancy\MembershipVerifier;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
-use Modules\Platform\Infrastructure\Tenancy\DenyAllAdmissionVerifier;
 use Tests\TestCase;
 
 /**
@@ -20,7 +19,8 @@ final class DefaultBindingsTest extends TestCase
     {
         // IdentityTenancy replaces the deny-all membership verifier; Platform only requires one.
         $this->assertInstanceOf(MembershipVerifier::class, $this->app->make(MembershipVerifier::class));
-        $this->assertInstanceOf(DenyAllAdmissionVerifier::class, $this->app->make(AdmissionVerifier::class));
+        // IdentityTenancy replaces the deny-all admission verifier; Platform only requires one.
+        $this->assertInstanceOf(AdmissionVerifier::class, $this->app->make(AdmissionVerifier::class));
         $this->assertInstanceOf(TenantContext::class, $this->app->make(TenantContext::class));
         $this->assertInstanceOf(DomainEventRecorder::class, $this->app->make(DomainEventRecorder::class));
         $this->assertInstanceOf(IdempotencyStore::class, $this->app->make(IdempotencyStore::class));

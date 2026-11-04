@@ -43,6 +43,9 @@ final class RlsCatalogTest extends SecurityTestCase
         'identity.organization_memberships' => [
             'membership_reader_read' => ['SELECT', 'orbixa_membership_reader', 'true', null],
         ],
+        'identity.invitations' => [
+            'membership_reader_read' => ['SELECT', 'orbixa_membership_reader', 'true', null],
+        ],
     ];
 
     /**
@@ -54,6 +57,7 @@ final class RlsCatalogTest extends SecurityTestCase
     private const REVIEWED_SECURITY_DEFINER_FUNCTIONS = [
         'identity.has_active_membership(uuid,uuid)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
         'identity.organizations_for_user(uuid)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
+        'identity.admissible_invitation(bytea,uuid,text)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
     ];
 
     public function test_every_tenant_table_follows_the_rls_template(): void

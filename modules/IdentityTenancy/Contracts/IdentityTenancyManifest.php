@@ -18,6 +18,7 @@ final class IdentityTenancyManifest implements ModuleManifest
             'identity.password_reset_tokens',
             'identity.organizations',
             'identity.organization_memberships',
+            'identity.invitations',
         ];
     }
 }

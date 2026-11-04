@@ -103,7 +103,8 @@ final class AccessRolesTest extends SecurityTestCase
 
             $hook = $this->accessLifecycle();
             $this->expectException(LastOwnerRequired::class);
-            $hook->membershipRevoking($this->organization, $this->membershipId($this->owner));
+            // Revoked by an owner (itself) so the owner-by-owner rule passes and the last-owner invariant is what blocks.
+            $hook->membershipRevoking($this->organization, $this->membershipId($this->owner), $this->membershipId($this->owner));
         });
     }
 
@@ -112,9 +113,20 @@ final class AccessRolesTest extends SecurityTestCase
         $coOwner = $this->member();
         $this->inOrg($this->owner, function () use ($coOwner) {
             $this->roles()->grant($this->owner, $this->membershipId($coOwner), 'org_owner');
-            $this->accessLifecycle()->membershipRevoking($this->organization, $this->membershipId($coOwner));
+            $this->accessLifecycle()->membershipRevoking($this->organization, $this->membershipId($coOwner), $this->membershipId($this->owner));
             $this->assertSame([], $this->roleKeys($coOwner));
             $this->assertSame(['org_owner'], $this->roleKeys($this->owner));
+        });
+    }
+
+    public function test_only_an_owner_can_revoke_an_owner(): void
+    {
+        $admin = $this->member();
+        $this->inOrg($this->owner, function () use ($admin) {
+            $this->roles()->grant($this->owner, $this->membershipId($admin), 'org_admin');
+
+            $this->expectException(AccessDenied::class);
+            $this->accessLifecycle()->membershipRevoking($this->organization, $this->membershipId($this->owner), $this->membershipId($admin));
         });
     }
 

@@ -7,7 +7,7 @@ use Modules\Access\Contracts\Permission;
 /**
  * Anti-escalation rules (D5), pure and unit-tested:
  * - nobody changes their own roles;
- * - the actor needs members.manage;
+ * - the actor needs the required permission (members.manage, or members.invite for invitations);
  * - a role can only be granted/removed if all its permissions are held by the actor;
  * - org_owner can only be granted/removed by an org_owner.
  */
@@ -24,13 +24,14 @@ final class RoleAssignmentPolicy
         array $actorPermissions,
         string $roleKey,
         array $rolePermissions,
+        Permission $required = Permission::MembersManage,
     ): ?string {
         if ($isSelf) {
             return 'Nobody can change their own roles.';
         }
 
-        if (! in_array(Permission::MembersManage, $actorPermissions, true)) {
-            return 'members.manage is required.';
+        if (! in_array($required, $actorPermissions, true)) {
+            return "{$required->value} is required.";
         }
 
         if ($roleKey === RoleTemplates::OWNER && ! in_array(RoleTemplates::OWNER, $actorRoles, true)) {

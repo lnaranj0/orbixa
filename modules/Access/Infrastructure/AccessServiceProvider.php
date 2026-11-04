@@ -9,6 +9,7 @@ use Modules\Access\Contracts\AccessManifest;
 use Modules\Access\Contracts\Authorizer;
 use Modules\Access\Contracts\Permission;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
+use Modules\IdentityTenancy\Contracts\RoleGrantGuard;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
 
 final class AccessServiceProvider extends ServiceProvider
@@ -18,6 +19,7 @@ final class AccessServiceProvider extends ServiceProvider
         $this->app->tag([AccessManifest::class], ModuleManifest::TAG);
         $this->app->tag([AccessLifecycle::class], OrganizationLifecycle::TAG);
         $this->app->bind(Authorizer::class, PostgresAuthorizer::class);
+        $this->app->bind(RoleGrantGuard::class, AccessRoleGrantGuard::class);
     }
 
     public function boot(): void
