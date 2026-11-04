@@ -26,4 +26,10 @@ enum Permission: string
     case AgentsAssign = 'agents.assign';
     case AgentsExecute = 'agents.execute';
     case AuditView = 'audit.view';
+    // 04-monitoring-access (M4)
+    case MonitoringView = 'monitoring.view';
+    case MonitoringGrantsView = 'monitoring.grants.view';
+    case MonitoringGrantsManage = 'monitoring.grants.manage';
+    case MonitoringRestrictedView = 'monitoring.restricted.view';
+    case MonitoringExport = 'monitoring.export';
 }
