@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\IdentityTenancy\Contracts\ActiveOrganization;
 use Modules\Teams\Presentation\Http\Controllers\TeamApiController;
+use Modules\Teams\Presentation\Http\Controllers\TeamPageController;
 
 // D10: session + CSRF ("web"), active organization re-verified per request.
 Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
@@ -16,4 +17,13 @@ Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
         Route::post('/teams/{team}/archive', [TeamApiController::class, 'archive'])->name('archive');
         Route::post('/teams/{team}/members', [TeamApiController::class, 'addMember'])->name('members.store');
         Route::delete('/teams/{team}/members/{membership}', [TeamApiController::class, 'removeMember'])->name('members.destroy');
+    });
+
+// D18: minimal screens until 11-design-system.
+Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
+    ->prefix('/o/{organization}')
+    ->name('teams.')
+    ->group(function () {
+        Route::get('/teams', [TeamPageController::class, 'index'])->name('index');
+        Route::post('/teams', [TeamPageController::class, 'store'])->name('store');
     });

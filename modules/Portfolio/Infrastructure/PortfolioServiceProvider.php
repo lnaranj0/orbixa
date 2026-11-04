@@ -28,6 +28,7 @@ final class PortfolioServiceProvider extends ServiceProvider
     {
         $this->loadMigrationsFrom(dirname(__DIR__).'/Database/Migrations');
         $this->loadRoutesFrom(dirname(__DIR__).'/Presentation/routes.php');
+        $this->loadViewsFrom(dirname(__DIR__).'/Presentation/views', 'portfolio');
 
         // D11: project creation is throttled per user (key enumeration).
         RateLimiter::for('projects.create', fn (Request $request) => Limit::perMinute(10)->by('user:'.$request->user()?->getAuthIdentifier()));
