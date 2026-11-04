@@ -8,11 +8,16 @@ use Modules\Access\Contracts\AccessDenied;
 use Modules\IdentityTenancy\Contracts\MembershipChangeDenied;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
 use Modules\Platform\Presentation\Http\Middleware\AssignCorrelationId;
+use Modules\Portfolio\Contracts\ProjectKeyUnavailable;
+use Modules\Portfolio\Contracts\ProjectNotFound;
+use Modules\Portfolio\Contracts\ProjectOperationDenied;
+use Modules\Portfolio\Contracts\ProjectVersionConflict;
 use Modules\Teams\Contracts\HierarchyViolation;
 use Modules\Teams\Contracts\TeamMemberNotFound;
 use Modules\Teams\Contracts\TeamNotFound;
 use Modules\Teams\Contracts\TeamOperationDenied;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
@@ -36,6 +41,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(TeamNotFound::class, fn (TeamNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(TeamMemberNotFound::class, fn (TeamMemberNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(HierarchyViolation::class, fn (HierarchyViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
+        $exceptions->map(ProjectNotFound::class, fn (ProjectNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(ProjectOperationDenied::class, fn (ProjectOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(ProjectKeyUnavailable::class, fn (ProjectKeyUnavailable $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
+        $exceptions->map(ProjectVersionConflict::class, fn (ProjectVersionConflict $e) => new ConflictHttpException($e->getMessage(), $e));
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
