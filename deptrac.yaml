@@ -53,6 +53,19 @@ deptrac:
           must_not:
             - type: classLike
               value: '^Modules\\Access\\Contracts\\'
+    - name: TeamsContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Teams\\Contracts\\'
+    - name: TeamsInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Teams\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Teams\\Contracts\\'
     - name: AuditContracts
       collectors:
         - type: classLike
@@ -72,6 +85,7 @@ deptrac:
       - AuditContracts
       - IdentityTenancyContracts
       - AccessContracts
+      - TeamsContracts
     PlatformContracts: ~
     PlatformInternals:
       - PlatformContracts
@@ -85,6 +99,15 @@ deptrac:
     AccessInternals:
       - AccessContracts
       - IdentityTenancyContracts
+      - PlatformContracts
+    TeamsContracts:
+      - PlatformContracts
+      - IdentityTenancyContracts
+      - AccessContracts
+    TeamsInternals:
+      - TeamsContracts
+      - IdentityTenancyContracts
+      - AccessContracts
       - PlatformContracts
     AuditContracts:
       - PlatformContracts
