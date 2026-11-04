@@ -5,19 +5,20 @@ namespace Modules\Teams\Application;
 use Illuminate\Contracts\Auth\Authenticatable;
 use InvalidArgumentException;
 use Modules\IdentityTenancy\Contracts\MembershipLookup;
+use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
 use Modules\Teams\Contracts\HierarchyViolation;
-use Modules\Teams\Contracts\TeamMemberNotFound;
 use Modules\Teams\Contracts\TeamOperationDenied;
 use Modules\Teams\Infrastructure\TeamStore;
 
 /**
  * Adds an active organization member to a team (D6, D13, D14): nobody adds
  * themselves, leads are appointed only with the organization-level
- * permission, and the membership is locked FOR SHARE so a concurrent
- * revocation cannot interleave. Idempotent for an existing active member.
+ * permission (also to demote one), and the membership is locked FOR SHARE
+ * so a concurrent revocation cannot interleave. Idempotent for the same
+ * role; a role change closes the old row and opens a new one.
  */
 final class AssignTeamMember
 {
@@ -40,21 +41,28 @@ final class AssignTeamMember
         if ($membershipId === $actorMembershipId) {
             throw TeamOperationDenied::because('Nobody can add themselves to a team.');
         }
-        if ($role === 'lead' && ! $this->guard->managesOrganizationTeams($actor)) {
-            throw TeamOperationDenied::because('Appointing a lead requires the organization-level teams.manage.');
-        }
         if ($team['status'] !== 'active') {
             throw HierarchyViolation::because(HierarchyViolation::ARCHIVED);
         }
-        if (! $this->memberships->lockActive($membershipId)) {
-            throw TeamMemberNotFound::make();
+        if (! TeamStore::isUuid($membershipId) || ! $this->memberships->lockActive($membershipId)) {
+            throw MembershipReferenceInvalid::make();
         }
 
-        if ($this->teams->addMember($teamId, $membershipId, $role, $actorMembershipId)) {
-            $this->events->record(
-                new DomainEvent('team.member.assigned', 1, 'team', $teamId, ['membership_id' => $membershipId, 'role' => $role]),
-                ActorReference::human((string) $actor->getAuthIdentifier()),
-            );
+        $current = $this->teams->lockMemberRole($teamId, $membershipId);
+        if ($current === $role) {
+            return;
         }
+        if (($role === 'lead' || $current === 'lead') && ! $this->guard->managesOrganizationTeams($actor)) {
+            throw TeamOperationDenied::because('Appointing or demoting a lead requires the organization-level teams.manage.');
+        }
+
+        $by = ActorReference::human((string) $actor->getAuthIdentifier());
+        if ($current !== null) {
+            $this->teams->removeMember($teamId, $membershipId, $actorMembershipId, 'removed');
+            $this->events->record(new DomainEvent('team.member.removed', 1, 'team', $teamId, ['membership_id' => $membershipId]), $by);
+        }
+
+        $this->teams->addMember($teamId, $membershipId, $role, $actorMembershipId);
+        $this->events->record(new DomainEvent('team.member.assigned', 1, 'team', $teamId, ['membership_id' => $membershipId, 'role' => $role]), $by);
     }
 }

@@ -104,6 +104,17 @@ final class TeamStore
         );
     }
 
+    /** Role of the active team membership, locked for the rest of the transaction. */
+    public function lockMemberRole(string $teamId, string $membershipId): ?string
+    {
+        $row = $this->connection()->selectOne(
+            'select role from teams.team_members where team_id = ?::uuid and membership_id = ?::uuid and removed_at is null for update',
+            [$teamId, $membershipId]
+        );
+
+        return $row === null ? null : (string) ((array) $row)['role'];
+    }
+
     public function closeAllForMembership(string $membershipId, string $removedByMembershipId): int
     {
         return $this->connection()->update(

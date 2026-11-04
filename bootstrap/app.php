@@ -6,6 +6,7 @@ use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Modules\Access\Contracts\AccessDenied;
 use Modules\IdentityTenancy\Contracts\MembershipChangeDenied;
+use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
 use Modules\Platform\Presentation\Http\Middleware\AssignCorrelationId;
 use Modules\Portfolio\Contracts\ProjectKeyUnavailable;
@@ -40,6 +41,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(TenantAccessDenied::class, fn (TenantAccessDenied $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(AccessDenied::class, fn (AccessDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(MembershipChangeDenied::class, fn (MembershipChangeDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(MembershipReferenceInvalid::class, fn (MembershipReferenceInvalid $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
         $exceptions->map(TeamOperationDenied::class, fn (TeamOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(TeamNotFound::class, fn (TeamNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(TeamMemberNotFound::class, fn (TeamMemberNotFound $e) => new NotFoundHttpException(previous: $e));

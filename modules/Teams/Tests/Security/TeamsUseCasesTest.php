@@ -3,11 +3,14 @@
 namespace Modules\Teams\Tests\Security;
 
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use Modules\Access\Contracts\Scope;
 use Modules\IdentityTenancy\Application\AcceptInvitation;
 use Modules\IdentityTenancy\Application\CreateOrganization;
 use Modules\IdentityTenancy\Application\InviteMember;
 use Modules\IdentityTenancy\Application\RevokeMembership;
+use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\IdentityTenancy\Infrastructure\Persistence\User;
 use Modules\Platform\Contracts\Tenancy\OrganizationId;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
@@ -118,7 +121,8 @@ final class TeamsUseCasesTest extends SecurityTestCase
             $assign = $this->app->make(AssignTeamMember::class);
 
             $this->assertFailsWith(TeamOperationDenied::class, fn () => $assign->handle($this->owner, $team, $this->membershipId($this->owner)));
-            $this->assertFailsWith(TeamMemberNotFound::class, fn () => $assign->handle($this->owner, $team, (string) Str::uuid()));
+            $this->assertFailsWith(MembershipReferenceInvalid::class, fn () => $assign->handle($this->owner, $team, (string) Str::uuid()));
+            $this->assertFailsWith(MembershipReferenceInvalid::class, fn () => $assign->handle($this->owner, $team, 'not-a-uuid'));
 
             $assign->handle($this->owner, $team, $this->membershipId($developer), 'lead');
             $assign->handle($this->owner, $team, $this->membershipId($developer), 'lead'); // idempotent
@@ -135,6 +139,36 @@ final class TeamsUseCasesTest extends SecurityTestCase
 
         // An admin holds teams.manage at organization level and may appoint leads too.
         $this->as($admin, fn () => $this->assertIsString($this->create('Admin team')));
+    }
+
+    public function test_promoting_an_existing_member_to_lead_takes_effect_with_history(): void
+    {
+        $developer = $this->member('developer');
+        $parentLead = $this->member('developer');
+        $developerMembership = $this->as($this->owner, fn () => $this->membershipId($developer));
+
+        $team = $this->as($this->owner, function () use ($developerMembership, $parentLead) {
+            $parent = $this->create('Parent');
+            $team = $this->create('Child', $parent);
+            $assign = $this->app->make(AssignTeamMember::class);
+            $assign->handle($this->owner, $parent, $this->membershipId($parentLead), 'lead');
+            $assign->handle($this->owner, $team, $developerMembership);
+            $assign->handle($this->owner, $team, $developerMembership, 'lead'); // was a silent no-op
+
+            return $team;
+        });
+
+        $this->as($developer, fn () => $this->assertTrue(Gate::forUser($developer)->allows('teams.manage', [Scope::team($team)])));
+
+        // A lead of the parent manages the child team but cannot demote its lead (D14).
+        $this->as($parentLead, fn () => $this->assertFailsWith(TeamOperationDenied::class, fn () => $this->app->make(AssignTeamMember::class)->handle($parentLead, $team, $developerMembership)));
+
+        $this->as($this->owner, function () use ($team, $developerMembership) {
+            $rows = DB::select('select role, removed_reason from teams.team_members where team_id = ? and membership_id = ? order by assigned_at, id', [$team, $developerMembership]);
+            $this->assertSame([['member', 'removed'], ['lead', null]], array_map(fn ($r) => [$r->role, $r->removed_reason], $rows));
+            $this->assertSame(2, $this->events('team.member.assigned', $team));
+            $this->assertSame(1, $this->events('team.member.removed', $team));
+        });
     }
 
     public function test_archived_team_rejects_members(): void

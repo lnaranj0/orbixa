@@ -5,10 +5,10 @@ namespace Modules\Portfolio\Application;
 use Illuminate\Contracts\Auth\Authenticatable;
 use InvalidArgumentException;
 use Modules\IdentityTenancy\Contracts\MembershipLookup;
+use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
-use Modules\Portfolio\Contracts\ProjectMemberNotFound;
 use Modules\Portfolio\Contracts\ProjectOperationDenied;
 use Modules\Portfolio\Infrastructure\ProjectStore;
 
@@ -41,7 +41,7 @@ final class AddProjectMember
             throw ProjectOperationDenied::because('Nobody can add themselves to a project.');
         }
         if (! ProjectStore::isUuid($membershipId) || ! $this->memberships->lockActive($membershipId)) {
-            throw ProjectMemberNotFound::make();
+            throw MembershipReferenceInvalid::make();
         }
 
         $current = $this->projects->lockMemberRole($projectId, $membershipId);

@@ -9,6 +9,7 @@ use Modules\Access\Contracts\Scope;
 use Modules\IdentityTenancy\Application\AcceptInvitation;
 use Modules\IdentityTenancy\Application\CreateOrganization;
 use Modules\IdentityTenancy\Application\InviteMember;
+use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\IdentityTenancy\Infrastructure\Persistence\User;
 use Modules\Platform\Contracts\Tenancy\OrganizationId;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
@@ -60,8 +61,8 @@ final class ProjectMembershipTest extends SecurityTestCase
             $this->add($this->owner, $project, $manager, 'manager');
 
             $this->assertFailsWith(ProjectOperationDenied::class, fn () => $this->app->make(AddProjectMember::class)->handle($this->owner, $project, $this->membershipId($this->owner)));
-            $this->assertFailsWith(ProjectMemberNotFound::class, fn () => $this->app->make(AddProjectMember::class)->handle($this->owner, $project, (string) Str::uuid()));
-            $this->assertFailsWith(ProjectMemberNotFound::class, fn () => $this->app->make(AddProjectMember::class)->handle($this->owner, $project, 'not-a-uuid'));
+            $this->assertFailsWith(MembershipReferenceInvalid::class, fn () => $this->app->make(AddProjectMember::class)->handle($this->owner, $project, (string) Str::uuid()));
+            $this->assertFailsWith(MembershipReferenceInvalid::class, fn () => $this->app->make(AddProjectMember::class)->handle($this->owner, $project, 'not-a-uuid'));
 
             return $project;
         });
