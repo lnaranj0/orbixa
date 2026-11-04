@@ -1,0 +1,13 @@
+# Tasks
+- [ ] Validar modelo compartido `project` y `work_items`; definir matriz de capacidades general/software/hybrid.
+- [ ] Implementar esquemas, repositorios, RLS e índices por tenant para planeación, riesgos y costos.
+- [ ] Implementar charter y objetivos con versionado/aprobaciones.
+- [ ] Implementar entregables, hitos, dependencias y cronograma.
+- [ ] Implementar baseline aprobada y control de cambios con Requests.
+- [ ] Implementar registro de riesgos, incidencias y decisiones.
+- [ ] Implementar presupuesto, costos y asignación de recursos con permisos separados.
+- [ ] Implementar estados de salud y seguimiento de avance explicable.
+- [ ] Implementar vistas de portafolio, ficha, timeline e informes con DesignSystem.
+- [ ] Integrar visores read-only: usuario, equipo, toda la organización; confidencialidad y exportaciones.
+- [ ] Añadir eventos outbox, auditoría y notificaciones sin filtración cross-tenant.
+- [ ] Añadir pruebas de autorización, conciliación de progreso, ciclos de dependencia, cambios de baseline y cierre.

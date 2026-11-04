@@ -1,0 +1,160 @@
+{
+  "version": "5.0",
+  "strategy": "modular-changes",
+  "changes": [
+    {
+      "id": "00-platform-foundation",
+      "phase": "Fase 0",
+      "modules": [
+        "Platform",
+        "Audit"
+      ],
+      "depends_on": []
+    },
+    {
+      "id": "01-identity-tenancy",
+      "phase": "Fase 1",
+      "modules": [
+        "IdentityTenancy",
+        "Access"
+      ],
+      "depends_on": [
+        "00-platform-foundation"
+      ]
+    },
+    {
+      "id": "02-teams-portfolio",
+      "phase": "Fase 1",
+      "modules": [
+        "Teams",
+        "Portfolio"
+      ],
+      "depends_on": [
+        "01-identity-tenancy"
+      ]
+    },
+    {
+      "id": "03-work-backlog",
+      "phase": "Fase 1",
+      "modules": [
+        "Work"
+      ],
+      "depends_on": [
+        "02-teams-portfolio",
+        "00-platform-foundation"
+      ]
+    },
+    {
+      "id": "04-monitoring-access",
+      "phase": "Fase 1",
+      "modules": [
+        "Monitoring",
+        "Access"
+      ],
+      "depends_on": [
+        "01-identity-tenancy",
+        "02-teams-portfolio",
+        "03-work-backlog"
+      ]
+    },
+    {
+      "id": "05-workflow-planning",
+      "phase": "Fase 2",
+      "modules": [
+        "Workflow",
+        "Planning",
+        "Reporting"
+      ],
+      "depends_on": [
+        "03-work-backlog"
+      ]
+    },
+    {
+      "id": "06-github-integration",
+      "phase": "Fase 2",
+      "modules": [
+        "GitHubIntegration"
+      ],
+      "depends_on": [
+        "03-work-backlog",
+        "00-platform-foundation"
+      ]
+    },
+    {
+      "id": "07-openspec-traceability",
+      "phase": "Fase 2",
+      "modules": [
+        "Specs"
+      ],
+      "depends_on": [
+        "06-github-integration",
+        "03-work-backlog"
+      ]
+    },
+    {
+      "id": "08-agent-registry",
+      "phase": "Fase 3",
+      "modules": [
+        "Agents"
+      ],
+      "depends_on": [
+        "03-work-backlog",
+        "01-identity-tenancy"
+      ]
+    },
+    {
+      "id": "09-agent-automation",
+      "phase": "Fase 4",
+      "modules": [
+        "Automation",
+        "Agents"
+      ],
+      "depends_on": [
+        "08-agent-registry",
+        "06-github-integration",
+        "00-platform-foundation"
+      ]
+    },
+    {
+      "id": "10-request-intake-signoff",
+      "phase": "Fase 1",
+      "modules": [
+        "Requests",
+        "RequirementDocuments"
+      ],
+      "depends_on": [
+        "00-platform-foundation",
+        "01-identity-tenancy",
+        "02-teams-portfolio"
+      ],
+      "optional_integration_after": [
+        "03-work-backlog"
+      ]
+    },
+    {
+      "id": "11-design-system",
+      "phase": "Fase 0-1 (transversal)",
+      "modules": [
+        "DesignSystem"
+      ],
+      "depends_on": [
+        "00-platform-foundation"
+      ]
+    },
+    {
+      "id": "12-project-management",
+      "phase": "Fase 1B",
+      "modules": [
+        "ProjectManagement"
+      ],
+      "depends_on": [
+        "01-identity-tenancy",
+        "02-teams-portfolio",
+        "03-work-backlog",
+        "04-monitoring-access",
+        "10-request-intake-signoff",
+        "11-design-system"
+      ]
+    }
+  ]
+}
