@@ -27,7 +27,7 @@ final class ChangeDependencies
     public function add(Authenticatable $actor, string $itemId, string $blockerId): void
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkEdit);
 
         $blocker = ItemStore::isUuid($blockerId) ? $this->items->find($blockerId) : null;
@@ -50,7 +50,7 @@ final class ChangeDependencies
     public function remove(Authenticatable $actor, string $itemId, string $blockerId): void
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkEdit);
 
         if (! ItemStore::isUuid($blockerId) || $this->items->removeDependency($blockerId, $itemId, $actorMembershipId) === 0) {

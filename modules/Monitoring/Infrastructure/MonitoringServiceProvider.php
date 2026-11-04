@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\Monitoring\Contracts\MonitoringManifest;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
+use Modules\Work\Contracts\ReadOnlyItemAccess;
 
 final class MonitoringServiceProvider extends ServiceProvider
 {
@@ -13,6 +14,7 @@ final class MonitoringServiceProvider extends ServiceProvider
     {
         $this->app->tag([MonitoringManifest::class], ModuleManifest::TAG);
         $this->app->tag([MonitoringLifecycle::class], OrganizationLifecycle::TAG);
+        $this->app->tag([MonitoringReadOnlyAccess::class], ReadOnlyItemAccess::TAG);
     }
 
     public function boot(): void
