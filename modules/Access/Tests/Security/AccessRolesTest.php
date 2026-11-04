@@ -54,6 +54,7 @@ final class AccessRolesTest extends SecurityTestCase
         $this->assertFalse(Gate::forUser($this->owner)->allows('undefined.ability'));
     }
 
+    /** 04 M4: the viewer holds monitoring.view only; it reads nothing without a grant. */
     public function test_viewer_has_no_domain_permission(): void
     {
         $viewer = $this->member();
@@ -61,8 +62,9 @@ final class AccessRolesTest extends SecurityTestCase
 
         $this->inOrg($viewer, function () use ($viewer) {
             foreach (Permission::cases() as $permission) {
-                $this->assertFalse($this->app->make(Authorizer::class)->can($viewer, $permission), "viewer must not hold {$permission->value}");
-                $this->assertFalse(Gate::forUser($viewer)->allows($permission->value));
+                $expected = $permission === Permission::MonitoringView;
+                $this->assertSame($expected, $this->app->make(Authorizer::class)->can($viewer, $permission), "viewer / {$permission->value}");
+                $this->assertSame($expected, Gate::forUser($viewer)->allows($permission->value));
             }
         });
     }

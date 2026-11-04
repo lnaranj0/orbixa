@@ -8,13 +8,17 @@ use Modules\Access\Contracts\Permission;
  * Base roles copied into every new organization. Only the "Sí" cells of
  * docs/PERMISSIONS.md are granted: "Config.", "Equipo propio", "Según
  * proyecto" and "Scope" stay ungranted until their modules define the
- * scope. The viewer has no domain permission (monitoring grants: 04).
+ * scope. The viewer only holds monitoring.view: it reads nothing without
+ * an explicit monitoring grant (04). monitoring.export is held by nobody.
+ *
+ * VERSION 2 (04): monitoring permissions; existing organizations are
+ * upgraded by Access migration 2026_11_06_000100.
  */
 final class RoleTemplates
 {
     public const OWNER = 'org_owner';
 
-    public const VERSION = 1;
+    public const VERSION = 2;
 
     /**
      * @return array<string, array{name: string, permissions: list<Permission>}>
@@ -27,6 +31,8 @@ final class RoleTemplates
             Permission::WorkCreate, Permission::WorkEdit, Permission::WorkTransition, Permission::WorkAssign,
             Permission::WorkApprove, Permission::PlanningManage, Permission::IntegrationsGithubManage,
             Permission::SpecsLink, Permission::AgentsManage, Permission::AgentsAssign, Permission::AuditView,
+            Permission::MonitoringView, Permission::MonitoringGrantsView, Permission::MonitoringGrantsManage,
+            Permission::MonitoringRestrictedView,
         ];
 
         return [
@@ -39,7 +45,7 @@ final class RoleTemplates
             'team_lead' => ['name' => 'Team lead', 'permissions' => [Permission::WorkCreate, Permission::SpecsLink]],
             'developer' => ['name' => 'Developer', 'permissions' => [Permission::WorkCreate, Permission::SpecsLink]],
             'reviewer' => ['name' => 'Reviewer', 'permissions' => []],
-            'viewer' => ['name' => 'Viewer', 'permissions' => []],
+            'viewer' => ['name' => 'Viewer', 'permissions' => [Permission::MonitoringView]],
         ];
     }
 }

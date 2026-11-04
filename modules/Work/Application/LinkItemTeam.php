@@ -31,7 +31,7 @@ final class LinkItemTeam
     public function link(Authenticatable $actor, string $itemId, string $teamId): void
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkAssign);
 
         if (! ItemStore::isUuid($teamId) || ! $this->teams->isActive($teamId)) {
@@ -49,7 +49,7 @@ final class LinkItemTeam
     public function unlink(Authenticatable $actor, string $itemId, string $teamId): void
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkAssign);
 
         if (! ItemStore::isUuid($teamId) || $this->items->unlinkTeam($itemId, $teamId, $actorMembershipId) === 0) {

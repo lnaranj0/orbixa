@@ -22,4 +22,9 @@ final class PostgresTeamDirectory implements TeamDirectory
     {
         return TeamStore::isUuid($teamId) ? $this->teams->descendantsOf($teamId) : [];
     }
+
+    public function activeDescendantsOf(string $teamId): array
+    {
+        return TeamStore::isUuid($teamId) ? $this->teams->activeDescendantsOf($teamId) : [];
+    }
 }

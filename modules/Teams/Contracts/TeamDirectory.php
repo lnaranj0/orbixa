@@ -24,4 +24,12 @@ interface TeamDirectory
      * @return list<string>
      */
     public function descendantsOf(string $teamId): array;
+
+    /**
+     * Active descendants reachable only through active teams (an archived
+     * subteam cuts its branch), in one query (04 review M-1, B9).
+     *
+     * @return list<string>
+     */
+    public function activeDescendantsOf(string $teamId): array;
 }

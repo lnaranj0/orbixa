@@ -9,6 +9,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\Access\Contracts\ScopedRoleProvider;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
+use Modules\Portfolio\Contracts\Catalog\ProjectCatalog;
 use Modules\Portfolio\Contracts\PortfolioManifest;
 use Modules\Portfolio\Contracts\ProjectDirectory;
 use Modules\Portfolio\Contracts\ProjectVisibility;
@@ -22,6 +23,7 @@ final class PortfolioServiceProvider extends ServiceProvider
         $this->app->tag([PortfolioScopedRoleProvider::class], ScopedRoleProvider::TAG);
         $this->app->bind(ProjectVisibility::class, PostgresProjectVisibility::class);
         $this->app->bind(ProjectDirectory::class, PostgresProjectDirectory::class);
+        $this->app->bind(ProjectCatalog::class, PostgresProjectCatalog::class);
     }
 
     public function boot(): void

@@ -13,6 +13,7 @@ use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Contracts\Tenancy\TenantContextRequired;
 use Modules\Portfolio\Contracts\ProjectDirectory;
 use Modules\Portfolio\Contracts\ProjectReference;
+use Modules\Work\Contracts\ReadOnlyItemAccess;
 use Modules\Work\Contracts\WorkItemNotFound;
 use Modules\Work\Contracts\WorkOperationDenied;
 use Modules\Work\Contracts\WorkRuleViolation;
@@ -35,6 +36,8 @@ final class WorkGuard
         private readonly ProjectDirectory $projects,
         private readonly ItemStore $items,
         private readonly Authorizer $authorizer,
+        /** @var iterable<ReadOnlyItemAccess> */
+        private readonly iterable $readOnlyAccess = [],
     ) {}
 
     /**
@@ -71,6 +74,30 @@ final class WorkGuard
         $project = $this->projects->reference($actor, $item['project_id']) ?? throw WorkItemNotFound::make();
 
         return [$item, $project];
+    }
+
+    /**
+     * The item for a WRITE: like item(), but an item the actor only reads
+     * through a monitoring grant is "denied" (403, audited by the provider)
+     * instead of "not found" (04 M2).
+     *
+     * @return array{0: ItemRow, 1: ProjectReference}
+     */
+    public function itemForChange(Authenticatable $actor, string $itemId): array
+    {
+        try {
+            return $this->item($actor, $itemId);
+        } catch (WorkItemNotFound $notFound) {
+            if (ItemStore::isUuid($itemId)) {
+                foreach ($this->readOnlyAccess as $provider) {
+                    if ($provider->refuseWrite($actor, $itemId)) {
+                        throw WorkOperationDenied::because('Read-only access.');
+                    }
+                }
+            }
+
+            throw $notFound;
+        }
     }
 
     public function requireCreate(Authenticatable $actor, ProjectReference $project): void

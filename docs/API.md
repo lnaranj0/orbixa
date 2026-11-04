@@ -68,19 +68,23 @@ Mismas reglas que 02: sesión + CSRF, membresía verificada por petición, `thro
 ```
 Response incluye nueva versión, transición y correlation_id. Crear issue permite `Idempotency-Key` para reintentos de clientes; autorización por tenant resuelta del servidor, nunca confiando ciegamente en org_id del body.
 
-## API de monitoreo de solo lectura
-| Método | Ruta | Autorización |
+## Monitoreo (04, implementado)
+Rutas bajo `/api/v1/organizations/{organization}/monitoring`, con sesión + CSRF y membresía verificada en cada petición. El alcance se calcula en cada petición a partir de los grants vigentes; sin grant, cero datos. Owner y admin tienen alcance implícito de organización.
+
+| Método | Ruta | Autorización / notas |
 | --- | --- | --- |
-| GET | `/organizations/{org}/monitoring/overview` | `monitoring.view` + grant vigente + filtros scope |
-| GET | `/organizations/{org}/monitoring/items` | Misma política en cada fila, paginación y búsqueda |
-| GET | `/organizations/{org}/monitoring/teams/{team}` | Grant `team` que cubra ese equipo |
-| GET | `/organizations/{org}/monitoring/users/{member}` | Grant `user` que cubra ese miembro |
-| GET | `/organizations/{org}/monitoring/grants` | `monitoring.grants.view`; visores solo sus grants si se autoriza |
-| POST | `/organizations/{org}/monitoring/grants` | `monitoring.grants.manage`, validar alcance y FK tenant |
-| PATCH/DELETE | `/organizations/{org}/monitoring/grants/{grant}` | `monitoring.grants.manage`, cambio/revocación auditado |
+| GET | `/overview` | `monitoring.view` + grants vigentes. Conteos por estado y prioridad solo dentro del alcance |
+| GET | `/items` | Keyset (`updated_at`, `id`), filtros `status`, `type`, `priority`. Sin totales. El cursor queda ligado al visor y al alcance: tras revocar o conceder, un cursor viejo da 422 |
+| GET | `/items/{item}` | Detalle de solo lectura (sin asignados, equipos ni dependencias). 404 si ningún grant lo cubre |
+| GET | `/users/{member}` | Subconjunto del alcance donde el miembro es owner o colaborador, con conteos. 404 si ningún grant cubre a ese miembro |
+| GET | `/teams/{team}` | Subconjunto del alcance vinculado al equipo, con conteos. 404 si ningún grant cubre ese equipo |
+| GET | `/grants` | `monitoring.grants.view` (owner/admin). El visor no lista grants |
+| POST | `/grants` | `monitoring.grants.manage`; `restricted` exige `monitoring.restricted.view`. Visor o destino inutilizable (inexistente, inactivo, de otra organización, sin `monitoring.view`): 422 genérico, con el intento auditado |
+| PATCH | `/grants/{grant}` | `expected_version` (409). Solo `reason`, `expires_at`, `visibility_level` e `include_descendants` (equipos) |
+| POST | `/grants/{grant}/revoke` | 204; un grant ya revocado da 404 |
 
-`POST grants` acepta `viewer_membership_id`, `scope_type`, `target_membership_id` o `target_team_id` según corresponda, `include_descendants`, vigencia y motivo. Nunca acepta `organization_id` del body como fuente de autorización. Una consulta a recurso fuera de alcance responde 404/403 sin revelar existencia. No exponer filtros que permitan reconstruir datos fuera del grant mediante conteos o facetas.
-
+- Las rutas de lectura solo admiten GET: otros métodos dan 405. **No hay exportación en 04**: nadie tiene `monitoring.export`.
+- Escrituras de Work (PATCH, transición, asignación, etiquetas, equipos, dependencias) sobre un item que un grant del visor cubre: **403** y `monitoring.viewer.access_denied`. Sobre un item no cubierto: el 404 de siempre. Un grant nunca abre las lecturas de Work.
 
 ## Requests / documentos / firma (v4)
 | Método | Ruta | Finalidad |

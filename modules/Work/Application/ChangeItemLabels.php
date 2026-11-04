@@ -28,7 +28,7 @@ final class ChangeItemLabels
     public function add(Authenticatable $actor, string $itemId, string $labelId): void
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkEdit);
 
         if (! ItemStore::isUuid($labelId)) {
@@ -46,7 +46,7 @@ final class ChangeItemLabels
     public function remove(Authenticatable $actor, string $itemId, string $labelId): void
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkEdit);
 
         if (! ItemStore::isUuid($labelId) || $this->items->removeLabel($itemId, $labelId, $actorMembershipId) === 0) {

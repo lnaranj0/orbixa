@@ -5,7 +5,8 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 | Esquema | Tablas (principales) |
 | --- | --- |
 | `identity` | users, auth_identities, organizations, organization_memberships, invitations, support_access_grants |
-| `access` | roles, permissions, role_permissions, membership_roles, project_role_grants, monitoring_grants, service_principals |
+| `access` | roles, permissions, role_permissions, membership_roles, service_principals |
+| `monitoring` | grants, grant_events (04, módulo Monitoring) |
 | `teams` | teams (parent_team_id), team_members, team_parent_changes |
 | `portfolio` | projects, project_members, project_team_links (02); project_repositories (06). `project_counters` pasa a 03 y los hitos a `12-project-management` |
 | `work` | items, item_types, labels, item_labels, item_comments, item_attachments, item_assignments, item_dependencies, item_events |
@@ -47,9 +48,9 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 - Cambios de tenant no se permiten para registros ya creados sin operación administrativa extraordinaria.
 
 ## Grants de monitoreo
-`access.monitoring_grants`: `id uuid PK`, `organization_id uuid`, `viewer_membership_id uuid`, `scope_type enum lógico (user|team|organization)`, `target_user_membership_id uuid nullable`, `target_team_id uuid nullable`, `include_descendants boolean default false`, `visibility_level (standard|restricted) default standard`, `granted_by_membership_id uuid`, `starts_at timestamptz`, `expires_at timestamptz nullable`, `revoked_at timestamptz nullable`, `reason text`, `created_at timestamptz`, `lock_version bigint`. CHECK: exactamente un destino según `scope_type`; organisation sin target. FK compuestas para tenant y grants administrados dentro de la organización. Índices sobre `(organization_id,viewer_membership_id,revoked_at,expires_at)` y destinos.
+`monitoring.grants` (04 M1; antes descrito como `access.monitoring_grants`): `id uuid PK`, `organization_id uuid`, `viewer_membership_id uuid`, `scope_type enum lógico (user|team|organization)`, `target_membership_id uuid nullable`, `target_team_id uuid nullable`, `include_descendants boolean default false`, `visibility_level (standard|restricted) default standard`, `granted_by_membership_id uuid`, `starts_at timestamptz`, `expires_at timestamptz nullable`, `revoked_at timestamptz nullable`, `reason text`, `created_at timestamptz`, `lock_version bigint`. CHECK: exactamente un destino según `scope_type`; organisation sin target. FK compuestas para tenant y grants administrados dentro de la organización. Índices sobre `(organization_id,viewer_membership_id,revoked_at,expires_at)` y destinos.
 
-`access.monitoring_grant_events` almacena altas, ediciones, expiraciones y revocaciones con actor/motivo/correlation_id. `work.item_team_links` y relaciones de asignación permiten calcular, de forma estable, visibilidad por usuario o equipo sin inferencias por nombres.
+`monitoring.grant_events` almacena altas, ediciones, expiraciones y revocaciones con actor/motivo/correlation_id. `work.item_team_links` y relaciones de asignación permiten calcular, de forma estable, visibilidad por usuario o equipo sin inferencias por nombres.
 
 **Importante:** no basta RLS solo con `organization_id` para autorizar *subconjuntos* de lectura de un viewer; el servicio de visibilidad compone grant + membresía + confidencialidad + pertenencia a recursos. Si existen endpoints SQL directos se requieren views/funciones seguras o políticas adicionales que materialicen ese alcance. Evitar vistas `SECURITY DEFINER` sin control explícito.
 

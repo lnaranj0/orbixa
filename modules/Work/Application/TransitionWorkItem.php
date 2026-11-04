@@ -25,7 +25,7 @@ final class TransitionWorkItem
     public function handle(Authenticatable $actor, string $itemId, int $expectedVersion, string $to, ?string $reason = null): int
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkTransition);
 
         $from = $item['status'];

@@ -35,7 +35,7 @@ final class UpdateWorkItem
     public function handle(Authenticatable $actor, string $itemId, int $expectedVersion, array $changes): int
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkEdit);
 
         $columns = $this->validated($changes);

@@ -218,6 +218,23 @@ final class TeamStore
     /**
      * @return list<string>
      */
+    public function activeDescendantsOf(string $teamId): array
+    {
+        return $this->ids(
+            "with recursive subtree(id, level) as (
+                 select t.id, 1 from teams.teams t where t.parent_team_id = ?::uuid and t.status = 'active'
+                 union all
+                 select t.id, s.level + 1 from teams.teams t join subtree s on t.parent_team_id = s.id
+                  where t.status = 'active' and s.level < 5
+             )
+             select id::text as id from subtree order by 1",
+            [$teamId]
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
     public function descendantsOf(string $teamId): array
     {
         return $this->ids(

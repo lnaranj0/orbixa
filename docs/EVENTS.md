@@ -62,6 +62,18 @@ Asignación, mención, revisión solicitada, bloqueo, comentario importante, ent
 
 ## Eventos de monitoreo
 - `monitoring.grant.created`, `monitoring.grant.updated`, `monitoring.grant.revoked`, `monitoring.grant.expired`, `monitoring.viewer.access_denied` (muestreado, sin revelar datos privados).
+
+### Payloads de 04 (versión 1)
+| Evento | Agregado | Payload |
+| --- | --- | --- |
+| `monitoring.grant.created` | monitoring_grant | `viewer_membership_id`, `scope_type`, `target_membership_id`, `target_team_id`, `include_descendants`, `visibility_level`, `starts_at`, `expires_at`. Nunca el motivo |
+| `monitoring.grant.updated` | monitoring_grant | `fields` cambiados |
+| `monitoring.grant.revoked` | monitoring_grant | `revoked_reason: revoked\|membership_revoked` (este último con actor `system`) |
+| `monitoring.grant.rejected` | membership (quien concede) | `scope_type`. Los IDs tal como llegaron solo quedan en `monitoring.grant_events` |
+| `monitoring.viewer.access_denied` | work_item | `viewer_membership_id`, `operation: write`. Se registra tras el rollback, uno por visor, item y ventana de 10 minutos |
+| `audit.sensitive_access.granted` | monitoring_grant | `operation: monitoring.view` al leer mediante un grant `restricted` o de organización, uno por actor, grant y ventana de 10 minutos |
+
+`monitoring.grant.expired` queda diferido (04 M9): la expiración se aplica en cada lectura y emitir el evento requiere un job que recorra todas las organizaciones.
 - Payload mínimo: `grant_id`, `organization_id`, `viewer_membership_id`, `scope_type`, `target_id` permitido, `granted_by`, `expires_at`, `correlation_id`; prohibido incluir datos completos de tareas que no correspondan al alcance.
 - Los consumidores de notificaciones, búsquedas y reportes deben revalidar autorización al leer/entregar, nunca confiar solamente en grants vigentes cuando se encoló el evento.
 

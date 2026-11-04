@@ -43,7 +43,7 @@ final class AssignWorkItem
             throw InputRejected::because('Role must be owner or collaborator.');
         }
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkAssign);
 
         if ($membershipId === $actorMembershipId) {
@@ -90,7 +90,7 @@ final class AssignWorkItem
     public function unassign(Authenticatable $actor, string $itemId, string $membershipId): void
     {
         $actorMembershipId = $this->guard->context($actor);
-        [$item, $project] = $this->guard->item($actor, $itemId);
+        [$item, $project] = $this->guard->itemForChange($actor, $itemId);
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkAssign);
 
         if (! ItemStore::isUuid($membershipId) || $this->items->closeAssignment($itemId, $membershipId, $actorMembershipId, 'removed') === 0) {
