@@ -23,12 +23,33 @@ final class PostgresProjectVisibility implements ProjectVisibility
     {
         $membershipId = $this->memberships->idFor($actor);
 
-        if ($membershipId === null) {
-            return AccessibleProjects::only([]);
+        return $membershipId === null ? AccessibleProjects::only([]) : $this->accessibleTo($membershipId);
+    }
+
+    public function canView(Authenticatable $actor, string $projectId): bool
+    {
+        $membershipId = $this->memberships->idFor($actor);
+
+        return $membershipId !== null && $this->canMembershipView($membershipId, $projectId);
+    }
+
+    public function canMembershipView(string $membershipId, string $projectId): bool
+    {
+        if (! ProjectStore::isUuid($projectId) || ! ProjectStore::isUuid($membershipId)) {
+            return false;
         }
 
+        $accessible = $this->accessibleTo($membershipId);
+
+        // "Everything" means every project of the ACTIVE organization: the id
+        // must still exist under RLS, or a foreign UUID would pass.
+        return $accessible->all ? $this->projects->find($projectId) !== null : $accessible->includes($projectId);
+    }
+
+    private function accessibleTo(string $membershipId): AccessibleProjects
+    {
         // (a) organization-level projects.manage (owner/admin), restricted included.
-        if ($this->authorizer->can($actor, Permission::ProjectsManage)) {
+        if ($this->authorizer->membershipHas($membershipId, Permission::ProjectsManage)) {
             return AccessibleProjects::everything();
         }
 
@@ -36,18 +57,5 @@ final class PostgresProjectVisibility implements ProjectVisibility
         return AccessibleProjects::only(
             $this->projects->visibleIdsFor($membershipId, $this->teams->activeTeamIdsOf($membershipId))
         );
-    }
-
-    public function canView(Authenticatable $actor, string $projectId): bool
-    {
-        if (! ProjectStore::isUuid($projectId)) {
-            return false;
-        }
-
-        $accessible = $this->accessibleProjects($actor);
-
-        // "Everything" means every project of the ACTIVE organization: the id
-        // must still exist under RLS, or a foreign UUID would pass.
-        return $accessible->all ? $this->projects->find($projectId) !== null : $accessible->includes($projectId);
     }
 }

@@ -18,4 +18,13 @@ interface Authorizer
      * context, or without an active membership, always false.
      */
     public function canWithin(Authenticatable $actor, Permission $permission, Scope $scope): bool;
+
+    /**
+     * Organization-level permission of ANOTHER membership of the active
+     * organization (e.g. whether an assignee can see a project). Scoped
+     * roles are not considered; foreign memberships are invisible under RLS.
+     * The caller must verify that the membership is active
+     * (MembershipLookup::lockActive) before relying on the answer.
+     */
+    public function membershipHas(string $membershipId, Permission $permission): bool;
 }

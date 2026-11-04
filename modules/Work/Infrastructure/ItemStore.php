@@ -322,6 +322,130 @@ final class ItemStore
         )));
     }
 
+    /** Idempotent; false when the person already had an active row. */
+    public function assign(string $itemId, string $membershipId, string $role, string $assignedByMembershipId): bool
+    {
+        return $this->connection()->selectOne(
+            'insert into work.item_assignments (organization_id, item_id, membership_id, role, assigned_by_membership_id)
+             values (platform.current_organization_id(), ?::uuid, ?::uuid, ?, ?::uuid)
+             on conflict (organization_id, item_id, membership_id) where removed_at is null do nothing
+             returning id',
+            [$itemId, $membershipId, $role, $assignedByMembershipId]
+        ) !== null;
+    }
+
+    public function closeAssignment(string $itemId, string $membershipId, string $removedByMembershipId, string $reason): int
+    {
+        return $this->connection()->update(
+            'update work.item_assignments set removed_at = now(), removed_by_membership_id = ?::uuid, removed_reason = ?
+              where item_id = ?::uuid and membership_id = ?::uuid and removed_at is null',
+            [$removedByMembershipId, $reason, $itemId, $membershipId]
+        );
+    }
+
+    /** Active owner of the item, locked until commit. */
+    public function lockOwner(string $itemId): ?string
+    {
+        $row = $this->connection()->selectOne(
+            "select membership_id::text as id from work.item_assignments where item_id = ?::uuid and role = 'owner' and removed_at is null for update",
+            [$itemId]
+        );
+
+        return $row === null ? null : (string) ((array) $row)['id'];
+    }
+
+    public function closeAllAssignmentsOf(string $membershipId, string $removedByMembershipId): int
+    {
+        return $this->connection()->update(
+            "update work.item_assignments set removed_at = now(), removed_by_membership_id = ?::uuid, removed_reason = 'membership_revoked'
+              where membership_id = ?::uuid and removed_at is null",
+            [$removedByMembershipId, $membershipId]
+        );
+    }
+
+    /**
+     * @return list<array{membership_id: string, role: string, assigned_at: string}>
+     */
+    public function assignmentsOf(string $itemId): array
+    {
+        return array_values(array_map(function (object $row): array {
+            $c = (array) $row;
+
+            return ['membership_id' => (string) $c['membership_id'], 'role' => (string) $c['role'], 'assigned_at' => (string) $c['assigned_at']];
+        }, $this->connection()->select(
+            'select membership_id::text as membership_id, role, assigned_at::text as assigned_at from work.item_assignments
+              where item_id = ?::uuid and removed_at is null order by role desc, assigned_at, id',
+            [$itemId]
+        )));
+    }
+
+    public function linkTeam(string $itemId, string $teamId, string $linkedByMembershipId): bool
+    {
+        return $this->guarded(fn () => $this->connection()->selectOne(
+            'insert into work.item_team_links (organization_id, item_id, team_id, linked_by_membership_id)
+             values (platform.current_organization_id(), ?::uuid, ?::uuid, ?::uuid)
+             on conflict (organization_id, item_id, team_id) where unlinked_at is null do nothing
+             returning id',
+            [$itemId, $teamId, $linkedByMembershipId]
+        ) !== null);
+    }
+
+    public function unlinkTeam(string $itemId, string $teamId, string $unlinkedByMembershipId): int
+    {
+        return $this->connection()->update(
+            'update work.item_team_links set unlinked_at = now(), unlinked_by_membership_id = ?::uuid
+              where item_id = ?::uuid and team_id = ?::uuid and unlinked_at is null',
+            [$unlinkedByMembershipId, $itemId, $teamId]
+        );
+    }
+
+    public function addDependency(string $projectId, string $blockerId, string $blockedId, string $createdByMembershipId): bool
+    {
+        return $this->guarded(fn () => $this->connection()->selectOne(
+            'insert into work.item_dependencies (organization_id, project_id, blocker_item_id, blocked_item_id, created_by_membership_id)
+             values (platform.current_organization_id(), ?::uuid, ?::uuid, ?::uuid, ?::uuid)
+             on conflict (organization_id, blocker_item_id, blocked_item_id) where removed_at is null do nothing
+             returning id',
+            [$projectId, $blockerId, $blockedId, $createdByMembershipId]
+        ) !== null);
+    }
+
+    public function removeDependency(string $blockerId, string $blockedId, string $removedByMembershipId): int
+    {
+        return $this->connection()->update(
+            'update work.item_dependencies set removed_at = now(), removed_by_membership_id = ?::uuid
+              where blocker_item_id = ?::uuid and blocked_item_id = ?::uuid and removed_at is null',
+            [$removedByMembershipId, $blockerId, $blockedId]
+        );
+    }
+
+    /**
+     * Active dependencies of an item, both directions (same project only).
+     *
+     * @return array{blocked_by: list<array{id: string, key: string, status: string}>, blocks: list<array{id: string, key: string, status: string}>}
+     */
+    public function dependenciesOf(string $itemId): array
+    {
+        $map = fn (array $rows) => array_values(array_map(function (object $row): array {
+            $c = (array) $row;
+
+            return ['id' => (string) $c['id'], 'key' => (string) $c['key'], 'status' => (string) $c['status']];
+        }, $rows));
+
+        return [
+            'blocked_by' => $map($this->connection()->select(
+                'select i.id::text as id, i.key, i.status from work.item_dependencies d join work.items i on i.id = d.blocker_item_id
+                  where d.blocked_item_id = ?::uuid and d.removed_at is null order by i.number',
+                [$itemId]
+            )),
+            'blocks' => $map($this->connection()->select(
+                'select i.id::text as id, i.key, i.status from work.item_dependencies d join work.items i on i.id = d.blocked_item_id
+                  where d.blocker_item_id = ?::uuid and d.removed_at is null order by i.number',
+                [$itemId]
+            )),
+        ];
+    }
+
     public static function isUuid(?string $value): bool
     {
         return $value !== null && preg_match(self::UUID, $value) === 1;
