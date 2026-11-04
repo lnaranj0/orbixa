@@ -4,6 +4,7 @@ namespace Modules\Monitoring\Infrastructure;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\DatabaseManager;
+use Illuminate\Support\Facades\Log;
 use Modules\Monitoring\Application\MonitoringVisibility;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
@@ -42,11 +43,23 @@ final class MonitoringReadOnlyAccess implements ReadOnlyItemAccess
         // tenant transaction (membership re-verified).
         $organization = $this->tenant->current();
         $viewerMembershipId = $scope->viewerMembershipId;
-        $record = fn () => $this->record($actor, $itemId, $viewerMembershipId);
-        if ($organization !== null && $this->db->connection()->transactionLevel() > 0) {
-            $this->db->connection()->afterRollBack(fn () => $this->tenant->runFor($actor, $organization, $record));
+        $record = function () use ($actor, $itemId, $viewerMembershipId, $organization): void {
+            try {
+                $organization === null
+                    ? $this->record($actor, $itemId, $viewerMembershipId)
+                    : $this->tenant->runFor($actor, $organization, fn () => $this->record($actor, $itemId, $viewerMembershipId));
+            } catch (\Throwable $exception) {
+                // Never let the audit write mask the 403; leave a trace instead.
+                Log::warning('monitoring.viewer.access_denied could not be recorded', ['exception' => $exception::class]);
+            }
+        };
+        // Top-level request transaction: write after its rollback. Nested
+        // callers (outer transaction still open) are not expected on write
+        // paths; there the row joins the outer transaction.
+        if ($this->db->connection()->transactionLevel() === 1) {
+            $this->db->connection()->afterRollBack($record);
         } else {
-            $record();
+            $this->record($actor, $itemId, $viewerMembershipId);
         }
 
         return true;

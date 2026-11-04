@@ -96,16 +96,8 @@ final class MonitoringVisibility
         if (! $this->teams->isActive($teamId)) {
             return [];
         }
-        $ids = [$teamId];
-        if ($includeDescendants) {
-            foreach ($this->teams->descendantsOf($teamId) as $descendant) {
-                if ($this->teams->isActive($descendant)) {
-                    $ids[] = $descendant;
-                }
-            }
-        }
 
-        return $ids;
+        return $includeDescendants ? [$teamId, ...$this->teams->activeDescendantsOf($teamId)] : [$teamId];
     }
 
     private function allows(Authenticatable $actor, Permission $permission): bool

@@ -59,6 +59,8 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // Every tenant write route (POST/PATCH/DELETE) uses throttle:writes.
         RateLimiter::for('writes', fn (Request $request) => Limit::perMinute(60)->by('user:'.$request->user()?->getAuthIdentifier()));
+        // Read-heavy, scope-computing routes (monitoring) use throttle:reads.
+        RateLimiter::for('reads', fn (Request $request) => Limit::perMinute(300)->by('user:'.$request->user()?->getAuthIdentifier()));
 
         $prohibitDestructive = ! config('database.allow_destructive_commands');
 

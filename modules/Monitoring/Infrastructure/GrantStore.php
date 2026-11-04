@@ -161,6 +161,14 @@ final class GrantStore
         )));
     }
 
+    public function activeCountFor(string $viewerMembershipId): int
+    {
+        return (int) ((array) $this->connection()->selectOne(
+            'select count(*) as total from monitoring.grants where viewer_membership_id = ?::uuid and revoked_at is null and expires_at > now()',
+            [$viewerMembershipId]
+        ))['total'];
+    }
+
     public static function isUuid(?string $value): bool
     {
         return $value !== null && preg_match(self::UUID, $value) === 1;

@@ -35,6 +35,11 @@ final class ChangeGrant
         if ($grant === null || $grant['revoked_at'] !== null) {
             throw GrantNotFound::make();
         }
+        // An expired grant is never revived by an edit: that needs a new,
+        // fully re-validated grant (review M-2).
+        if (new \DateTimeImmutable($grant['expires_at']) <= new \DateTimeImmutable('now')) {
+            throw InputRejected::because('The grant has expired; issue a new one.');
+        }
 
         $columns = [];
         if (array_key_exists('reason', $changes)) {
@@ -50,10 +55,13 @@ final class ChangeGrant
             if ($grant['scope_type'] !== 'team') {
                 throw InputRejected::because('Only team grants can include subteams.');
             }
-            $columns['include_descendants'] = $changes['include_descendants'];
+            $columns['include_descendants'] = (bool) $changes['include_descendants'];
         }
         if (array_key_exists('expires_at', $changes)) {
             [, $columns['expires_at']] = GrantInput::validity(null, $changes['expires_at']);
+            if (new \DateTimeImmutable($columns['expires_at']) <= new \DateTimeImmutable($grant['starts_at'])) {
+                throw InputRejected::because('expires_at must be later than starts_at.');
+            }
             $this->requireWithinMaximum($grant['starts_at'], $columns['expires_at']);
         }
         if ($columns === []) {

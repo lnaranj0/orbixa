@@ -81,5 +81,16 @@ Comentarios, adjuntos y búsqueda de texto aún no existen; en `tasks.md` se mar
 - Las lecturas sin actor (M7) son el punto más sensible: solo Monitoring puede usarlas y siempre con un selector construido desde grants vigentes.
 - Revisar retención y confidencialidad antes de habilitar exportaciones o adjuntos.
 
+## Revisión de seguridad (aplicada)
+- **M-1:** índice de deduplicación de auditoría en la outbox (`2026_11_06_000300`), descendientes activos en una consulta, máximo 20 grants activos por visor, `throttle:reads` en las lecturas.
+- **M-2:** un grant revocado es inmutable también en base de datos (`2026_11_06_000400`); un grant expirado no se reactiva al editarlo.
+- **M-3:** la auditoría del 403 se escribe tras el rollback de la transacción de la petición y nunca tapa el 403.
+- **Decisiones documentadas:**
+  - los intentos sin permiso o de autoconcesión dan 403 sin auditar (la spec exige auditar los cruces entre organizaciones);
+  - un grant sigue vigente si quien lo emitió pierde el rol; un equipo archivado deja su grant sin efecto;
+  - código y migración v2 se despliegan juntos;
+  - owner/admin no auditan los listados de proyectos `restricted`, igual que en Work.
+- En producción, índices sobre tablas grandes como la outbox deben crearse con `CONCURRENTLY`, fuera de transacción.
+
 ## Verificación de salida
 Viewer sin grant obtiene cero datos; grants muestran solo el alcance permitido y nunca autorizan escritura.

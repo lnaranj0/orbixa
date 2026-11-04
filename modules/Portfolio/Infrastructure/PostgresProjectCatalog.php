@@ -14,7 +14,8 @@ final class PostgresProjectCatalog implements ProjectCatalog
         $result = ['standard' => [], 'restricted' => []];
         foreach ($this->db->connection()->select('select id::text as id, confidentiality from portfolio.projects order by id') as $row) {
             $c = (array) $row;
-            $result[$c['confidentiality'] === 'restricted' ? 'restricted' : 'standard'][] = (string) $c['id'];
+            // Fail closed: anything not explicitly standard is treated as restricted.
+            $result[$c['confidentiality'] === 'standard' ? 'standard' : 'restricted'][] = (string) $c['id'];
         }
 
         return $result;

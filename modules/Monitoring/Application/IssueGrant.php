@@ -23,6 +23,9 @@ use Modules\Teams\Contracts\TeamDirectory;
  */
 final class IssueGrant
 {
+    /** Bounds the work of every monitoring read (review M-1). */
+    public const MAX_ACTIVE_PER_VIEWER = 20;
+
     public function __construct(
         private readonly GrantGuard $guard,
         private readonly GrantStore $grants,
@@ -84,6 +87,9 @@ final class IssueGrant
             'starts_at' => $startsAt,
             'expires_at' => $expiresAt,
         ];
+        if ($this->grants->activeCountFor($viewer) >= self::MAX_ACTIVE_PER_VIEWER) {
+            throw InputRejected::because('This viewer already has the maximum number of active grants.');
+        }
         $grantId = $this->grants->create($grant, $actorMembershipId);
 
         $summary = array_diff_key($grant, ['reason' => true]);

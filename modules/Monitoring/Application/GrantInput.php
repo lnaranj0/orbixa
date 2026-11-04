@@ -49,6 +49,9 @@ final class GrantInput
     {
         $now = new DateTimeImmutable('now');
         $starts = $startsAt === null ? $now : self::moment($startsAt, 'starts_at');
+        if ($starts < $now->modify('-5 minutes')) {
+            throw InputRejected::because('starts_at cannot be in the past.');
+        }
         $expires = self::moment($expiresAt, 'expires_at');
 
         if ($expires <= $starts || $expires <= $now) {
