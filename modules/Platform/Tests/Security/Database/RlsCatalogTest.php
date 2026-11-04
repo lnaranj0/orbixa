@@ -15,8 +15,8 @@ final class RlsCatalogTest extends SecurityTestCase
     /** Global tables without organization_id, reviewed individually. */
     private const GLOBAL_TABLES = [
         'public.migrations',
-        'public.users',
-        'public.password_reset_tokens',
+        'identity.users',
+        'identity.password_reset_tokens',
         'public.sessions',
         'public.cache',
         'public.cache_locks',
