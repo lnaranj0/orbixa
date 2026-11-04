@@ -9,6 +9,7 @@ Parte de `00-platform-foundation`: tareas 2 y 3, controles previos. Ninguna tare
 | `orbixa_bootstrap` | Superusuario creado por la imagen Docker. No se puede degradar. | Solo aprovisionamiento con `scripts/db/provision.sh`. **Nunca** aparece en el `.env` de Laravel. |
 | `orbixa_migrator` | `LOGIN NOSUPERUSER NOBYPASSRLS NOCREATEDB NOCREATEROLE NOINHERIT` | Dueño de esquemas, tablas y funciones. Ejecuta `migrate --database=pgsql_migrator`. Tiene `CONNECT` y `CREATE` sobre su base. No es dueño de la base. |
 | `orbixa_app` | Mismos atributos. Sin membresía en el migrador. | Runtime de Laravel (conexión `pgsql`). Solo DML concedido tabla por tabla. Sin `TEMP`, `TRUNCATE`, `REFERENCES` ni `TRIGGER`. Sin acceso a `migrations`. |
+| `orbixa_membership_reader` | `NOLOGIN`, sin BYPASSRLS ni membresías salvo `orbixa_migrator WITH INHERIT FALSE, SET TRUE`. | Dueño de las funciones `SECURITY DEFINER` acotadas `identity.has_active_membership` y `identity.organizations_for_user` (01, opción A). Lee solo las columnas necesarias mediante policies nominales. Paso `provision.sh <env> reader`. |
 | `orbixa_relay` | Mismos atributos. Sin membresías. | Relay de la outbox (conexión `pgsql_relay`, opción A). Lee `events.domain_outbox` y solo modifica filas **pendientes**, en las columnas de publicación. Ninguna otra tabla. Ver `outbox-relay.md`. |
 
 Los roles son de todo el clúster. Por eso las pruebas usan un **servidor aparte** (`postgres-test`) y nunca la base de desarrollo.

@@ -19,7 +19,7 @@
 Los eventos transportan IDs y metadatos mínimos, no credenciales ni texto sensible. `event_version` es contrato independiente de versión API.
 
 ## Eventos de negocio
-- `organization.created`, `organization.member.invited`, `organization.member.revoked`.
+- `organization.created`, `organization.member.invited`, `organization.member.joined`, `organization.member.role_changed`, `organization.member.revoked`. Sin email ni nombre en el payload: solo IDs de organización, membresía, rol y actor.
 - `team.created`, `team.member.assigned`, `project.created`, `project.repository.linked`.
 - `work.item.created`, `work.item.updated`, `work.item.assigned`, `work.item.transitioned`, `work.item.blocked`, `work.item.completed`, `work.item.reopened`.
 - `planning.cycle.created`, `planning.cycle.started`, `planning.cycle.closed`.

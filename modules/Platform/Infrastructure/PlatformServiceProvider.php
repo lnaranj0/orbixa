@@ -16,11 +16,13 @@ use Modules\Platform\Contracts\Idempotency\IdempotencyStore;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
 use Modules\Platform\Contracts\Observability\CorrelationId;
 use Modules\Platform\Contracts\PlatformManifest;
+use Modules\Platform\Contracts\Tenancy\AdmissionVerifier;
 use Modules\Platform\Contracts\Tenancy\MembershipVerifier;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Infrastructure\Database\MigrationConnectionGuard;
 use Modules\Platform\Infrastructure\Events\PostgresDomainEventRecorder;
 use Modules\Platform\Infrastructure\Idempotency\PostgresIdempotencyStore;
+use Modules\Platform\Infrastructure\Tenancy\DenyAllAdmissionVerifier;
 use Modules\Platform\Infrastructure\Tenancy\DenyAllMembershipVerifier;
 use Modules\Platform\Infrastructure\Tenancy\PostgresTenantContext;
 use Modules\Platform\Presentation\Console\RelayOutboxCommand;
@@ -33,6 +35,7 @@ final class PlatformServiceProvider extends ServiceProvider
     {
         // Fail closed until 01-identity-tenancy binds the real verifier.
         $this->app->bind(MembershipVerifier::class, DenyAllMembershipVerifier::class);
+        $this->app->bind(AdmissionVerifier::class, DenyAllAdmissionVerifier::class);
         $this->app->scoped(TenantContext::class, PostgresTenantContext::class);
         $this->app->bind(DomainEventRecorder::class, PostgresDomainEventRecorder::class);
         $this->app->bind(IdempotencyStore::class, PostgresIdempotencyStore::class);

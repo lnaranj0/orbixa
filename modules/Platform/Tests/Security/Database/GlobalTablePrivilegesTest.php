@@ -17,8 +17,6 @@ final class GlobalTablePrivilegesTest extends SecurityTestCase
     /** @var array<string, list<string>> */
     private const EXPECTED_TABLES = [
         'migrations' => [],
-        'users' => ['SELECT', 'INSERT'],
-        'password_reset_tokens' => ['SELECT', 'INSERT', 'DELETE'],
         'sessions' => ['SELECT', 'INSERT', 'UPDATE', 'DELETE'],
         'cache' => [],
         'cache_locks' => [],
@@ -30,7 +28,6 @@ final class GlobalTablePrivilegesTest extends SecurityTestCase
     /** @var array<string, list<string>> */
     private const EXPECTED_SEQUENCES = [
         'migrations_id_seq' => [],
-        'users_id_seq' => ['USAGE'],
         'jobs_id_seq' => [],
         'failed_jobs_id_seq' => ['USAGE'],
     ];
@@ -50,27 +47,6 @@ final class GlobalTablePrivilegesTest extends SecurityTestCase
                     "Unexpected {$privilege} privilege on public.{$table}"
                 );
             }
-        }
-    }
-
-    public function test_users_update_is_limited_to_reviewed_columns(): void
-    {
-        $updatable = ['name', 'email', 'email_verified_at', 'password', 'remember_token', 'updated_at'];
-
-        $columns = DB::select(
-            "select column_name, has_column_privilege(current_user, 'public.users', column_name, 'UPDATE') as granted
-               from information_schema.columns
-              where table_schema = 'public' and table_name = 'users'"
-        );
-
-        $this->assertNotEmpty($columns);
-
-        foreach ($columns as $column) {
-            $this->assertSame(
-                in_array($column->column_name, $updatable, true),
-                $column->granted,
-                "Unexpected UPDATE privilege on public.users.{$column->column_name}"
-            );
         }
     }
 

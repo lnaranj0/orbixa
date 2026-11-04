@@ -31,6 +31,11 @@ final class PostgresRoles
         return self::identifier((string) Config::get("database.connections.{$connection}.username"));
     }
 
+    public static function membershipReader(): string
+    {
+        return self::identifier((string) Config::get('database.membership_reader_role'));
+    }
+
     public static function identifier(string $name): string
     {
         if (preg_match('/^[a-z_][a-z0-9_]{0,62}$/', $name) !== 1) {
