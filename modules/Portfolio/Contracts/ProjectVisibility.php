@@ -18,4 +18,10 @@ interface ProjectVisibility
     public function accessibleProjects(Authenticatable $actor): AccessibleProjects;
 
     public function canView(Authenticatable $actor, string $projectId): bool;
+
+    /**
+     * The same predicate for another active membership of the active
+     * organization (e.g. before assigning work to it).
+     */
+    public function canMembershipView(string $membershipId, string $projectId): bool;
 }

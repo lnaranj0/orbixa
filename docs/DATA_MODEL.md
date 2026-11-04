@@ -29,7 +29,9 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 
 ## Columnas críticas
 `work.items`: id, organization_id, project_id, key, type_id, parent_id, workflow_status_id, title, description, priority, estimate, due_at, created_by, lock_version.
-`work.item_assignments`: id, organization_id, item_id, actor_type, actor_id, assignment_role, assigned_by, assigned_at. Evitar FK polimórfica sin guardas; alternativa recomendada tabla normalizada `work_actors(id, organization_id, type, user_id nullable, agent_id nullable)` con CHECK que solo uno está definido.
+  - **Implementado en 03:** `type` texto con 7 valores (catálogo configurable más adelante), `status` como categoría global hasta que 05 añada `workflow_status_id`, `due_on date`, `number` + `key` (`<PROYECTO>-<n>`) asignados por `work.project_counters`. La FK al padre incluye `project_id` (mismo proyecto) y un trigger impide ciclos y más de 5 niveles.
+`work.item_assignments`: id, organization_id, item_id, actor_type, actor_id, assignment_role, assigned_by, assigned_at.
+  - **Implementado en 03:** solo `membership_id` (humano) con `role owner|collaborator`, filas temporales y un único owner activo; 08 añadirá `agent_id` con CHECK "exactamente uno". También `work.labels`/`item_labels` por proyecto, `item_team_links`, `item_dependencies` (mismo proyecto, sin ciclos, máximo 50) e `item_events` append-only. Evitar FK polimórfica sin guardas; alternativa recomendada tabla normalizada `work_actors(id, organization_id, type, user_id nullable, agent_id nullable)` con CHECK que solo uno está definido.
 `integrations.webhook_inbox`: id, provider, installation_external_id, delivery_id, signature_valid, event_name, action, payload_location, received_at, processed_at, attempts, status, error_code; UNIQUE(provider,installation_external_id,delivery_id).
 `events.domain_outbox`: event_id, organization_id, aggregate_type, aggregate_id, event_name, event_version, payload_json, occurred_at, published_at.
 `specs.artifacts`: id, organization_id, repository_id, change_id nullable, path, ref, commit_sha, kind, content_hash, parse_status, indexed_at.

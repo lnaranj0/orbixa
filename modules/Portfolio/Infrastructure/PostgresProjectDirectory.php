@@ -5,6 +5,7 @@ namespace Modules\Portfolio\Infrastructure;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Modules\IdentityTenancy\Contracts\CurrentMembership;
 use Modules\Portfolio\Contracts\ProjectDirectory;
+use Modules\Portfolio\Contracts\ProjectReference;
 use Modules\Portfolio\Contracts\ProjectSummary;
 use Modules\Portfolio\Contracts\ProjectVisibility;
 
@@ -24,14 +25,32 @@ final class PostgresProjectDirectory implements ProjectDirectory
         }
 
         $project = $this->projects->find($projectId);
-        $membershipId = $this->memberships->idFor($actor);
-
-        if ($project !== null && $project->confidentiality === 'restricted' && $membershipId !== null
-            && ! $this->projects->isActiveMember($project->id, $membershipId)) {
-            $this->audit->record($actor, $membershipId, $project->id, 'view');
+        if ($project !== null) {
+            $this->recordSensitiveAccess($actor, $project->id, 'view');
         }
 
         return $project;
+    }
+
+    public function reference(Authenticatable $actor, string $projectId): ?ProjectReference
+    {
+        if (! $this->visibility->canView($actor, $projectId)) {
+            return null;
+        }
+        $project = $this->projects->find($projectId);
+
+        return $project === null ? null : new ProjectReference($project->id, $project->key, $project->status, $project->confidentiality);
+    }
+
+    public function recordSensitiveAccess(Authenticatable $actor, string $projectId, string $operation): void
+    {
+        $membershipId = $this->memberships->idFor($actor);
+        $project = $this->projects->find($projectId);
+
+        if ($project !== null && $project->confidentiality === 'restricted' && $membershipId !== null
+            && ! $this->projects->isActiveMember($project->id, $membershipId)) {
+            $this->audit->record($actor, $membershipId, $project->id, $operation);
+        }
     }
 
     public function visible(Authenticatable $actor): array

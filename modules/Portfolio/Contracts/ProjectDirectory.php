@@ -27,4 +27,18 @@ interface ProjectDirectory
      * @return list<ProjectSummary>
      */
     public function page(Authenticatable $actor, array $filters, ?array $after, int $limit): array;
+
+    /**
+     * Visible project for another module's use case (Work), or null. Not
+     * audited by itself: callers that expose project content call
+     * recordSensitiveAccess().
+     */
+    public function reference(Authenticatable $actor, string $projectId): ?ProjectReference;
+
+    /**
+     * D3: records audit.sensitive_access.granted when the project is
+     * restricted and the actor sees it only through the organization role
+     * (deduplicated per actor, project and operation).
+     */
+    public function recordSensitiveAccess(Authenticatable $actor, string $projectId, string $operation): void;
 }

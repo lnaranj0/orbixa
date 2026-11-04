@@ -28,6 +28,11 @@ final class PostgresAuthorizer implements Authorizer
         return $membershipId !== null && $this->roles->hasPermission($membershipId, $permission);
     }
 
+    public function membershipHas(string $membershipId, Permission $permission): bool
+    {
+        return $this->roles->hasPermission($membershipId, $permission);
+    }
+
     public function canWithin(Authenticatable $actor, Permission $permission, Scope $scope): bool
     {
         $membershipId = $this->memberships->idFor($actor);
