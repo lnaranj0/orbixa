@@ -35,7 +35,7 @@
   - Evidencia: suite completa (292 tests) contra `postgres-test` como `orbixa_app`, sin BYPASSRLS; `MonitoringSchemaTest`, `MonitoringVisibilityTest` y `MonitoredWorkReaderTest` con datos de otra organización.
 - [x] Pruebas de permisos permitidos/denegados para roles y alcances aplicables.
   - Evidencia: `GrantAdministrationTest`, `MonitoringApiTest`, `ReadOnlyWritesTest`, `AccessRolesTest` y `RoleTemplatesTest`.
-- [ ] Revisión automática de límites modulares en CI y contratos de integración.
-  - En local: deptrac sin violaciones, con capas `WorkMonitoringContracts` y `PortfolioCatalogContracts`, más `TrustedReadersBoundaryTest`. Falta el run de CI del PR.
+- [x] Revisión automática de límites modulares en CI y contratos de integración.
+  - Evidencia: CI del PR #5 (run 41898223879) en verde con PHP 8.4 y 8.5 sobre PostgreSQL 18: Pint, PHPStan, deptrac sin violaciones (incluidas las capas `WorkMonitoringContracts` y `PortfolioCatalogContracts`), `TrustedReadersBoundaryTest` y suite completa como `orbixa_app`.
 - [x] Documentar migraciones, rollback, cambios de API y evidencia de funcionamiento.
   - Evidencia: `docs/API.md` (sección 04), `docs/EVENTS.md` (payloads 04), `docs/DATA_MODEL.md` (`monitoring.grants`). Migraciones `2026_11_06_000100`–`000400` roll-forward, aplicadas en pruebas y desarrollo con backup previo.
