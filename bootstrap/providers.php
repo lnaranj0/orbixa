@@ -11,6 +11,7 @@ use Modules\Platform\Infrastructure\PlatformServiceProvider;
 use Modules\Portfolio\Infrastructure\PortfolioServiceProvider;
 use Modules\Teams\Infrastructure\TeamsServiceProvider;
 use Modules\Work\Infrastructure\WorkServiceProvider;
+use Modules\Workflow\Infrastructure\WorkflowServiceProvider;
 
 // Module providers are registered explicitly (no auto-discovery) so the list
 // of active modules stays reviewable.
@@ -26,4 +27,5 @@ return [
     PortfolioServiceProvider::class,
     WorkServiceProvider::class,
     MonitoringServiceProvider::class,
+    WorkflowServiceProvider::class,
 ];
