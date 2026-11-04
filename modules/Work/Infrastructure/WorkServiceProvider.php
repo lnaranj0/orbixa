@@ -8,6 +8,7 @@ use Modules\Platform\Contracts\Modules\ModuleManifest;
 use Modules\Work\Application\WorkGuard;
 use Modules\Work\Contracts\Monitoring\MonitoredWorkReader;
 use Modules\Work\Contracts\ReadOnlyItemAccess;
+use Modules\Work\Contracts\Workflow\StatusUsage;
 use Modules\Work\Contracts\WorkManifest;
 
 final class WorkServiceProvider extends ServiceProvider
@@ -17,6 +18,7 @@ final class WorkServiceProvider extends ServiceProvider
         $this->app->tag([WorkManifest::class], ModuleManifest::TAG);
         $this->app->tag([WorkLifecycle::class], OrganizationLifecycle::TAG);
         $this->app->bind(MonitoredWorkReader::class, PostgresMonitoredWorkReader::class);
+        $this->app->bind(StatusUsage::class, PostgresStatusUsage::class);
         $this->app->when(WorkGuard::class)->needs('$readOnlyAccess')->giveTagged(ReadOnlyItemAccess::TAG);
     }
 
