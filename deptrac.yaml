@@ -157,6 +157,19 @@ deptrac:
           must_not:
             - type: classLike
               value: '^Modules\\Planning\\Contracts\\'
+    - name: ReportingContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Reporting\\Contracts\\'
+    - name: ReportingInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Reporting\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Reporting\\Contracts\\'
     - name: AuditContracts
       collectors:
         - type: classLike
@@ -182,6 +195,7 @@ deptrac:
       - MonitoringContracts
       - WorkflowContracts
       - PlanningContracts
+      - ReportingContracts
     PlatformContracts: ~
     PlatformInternals:
       - PlatformContracts
@@ -265,6 +279,13 @@ deptrac:
       - PortfolioContracts
       - IdentityTenancyContracts
       - AccessContracts
+      - PlatformContracts
+    ReportingContracts:
+      - PlatformContracts
+    ReportingInternals:
+      - ReportingContracts
+      - WorkContracts
+      - IdentityTenancyContracts
       - PlatformContracts
     AuditContracts:
       - PlatformContracts

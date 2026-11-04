@@ -16,6 +16,7 @@ use Modules\Monitoring\Infrastructure\GrantStore;
 use Modules\Platform\Contracts\Http\CursorCodec;
 use Modules\Platform\Contracts\Http\InvalidCursor;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
+use Modules\Platform\Contracts\Validation\ReportPeriod;
 use Modules\Work\Contracts\Monitoring\MonitoredItem;
 
 /**
@@ -39,6 +40,17 @@ final class MonitoringApiController
         $user = $this->user($request);
 
         return new JsonResponse(['data' => $this->tenant->runFor($user, $active->id, fn () => $queries->overview($user, $queries->scope($user)))]);
+    }
+
+    public function metrics(Request $request, ActiveOrganization $active, MonitoringQueries $queries): JsonResponse
+    {
+        $v = $request->validate(['from' => ['sometimes', 'string', 'max:10'], 'to' => ['sometimes', 'string', 'max:10']]);
+        $period = ReportPeriod::of($v['from'] ?? null, $v['to'] ?? null);
+        $user = $this->user($request);
+
+        $data = $this->tenant->runFor($user, $active->id, fn () => $queries->flowMetrics($user, $queries->scope($user), $period->from, $period->to));
+
+        return new JsonResponse(['data' => ['period' => ['from' => $period->from, 'to' => $period->to]] + $data]);
     }
 
     public function items(Request $request, ActiveOrganization $active, MonitoringQueries $queries): JsonResponse

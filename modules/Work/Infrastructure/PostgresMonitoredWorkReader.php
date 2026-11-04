@@ -14,7 +14,20 @@ final class PostgresMonitoredWorkReader implements MonitoredWorkReader
     private const COLUMNS = 'i.id::text as id, i.key, i.project_id::text as project_id, i.type, i.title, i.status, i.priority,
         i.due_on::text as due_on, i.completed_at::text as completed_at, i.updated_at::text as updated_at';
 
-    public function __construct(private readonly DatabaseManager $db) {}
+    public function __construct(
+        private readonly DatabaseManager $db,
+        private readonly FlowMetricsCalculator $metrics,
+    ) {}
+
+    public function flowMetrics(ItemSelector $selector, string $from, string $to): array
+    {
+        if ($selector->isEmpty()) {
+            return FlowMetricsCalculator::empty();
+        }
+        [$where, $bindings] = $this->predicate($selector);
+
+        return $this->metrics->compute($where, $bindings, $from, $to);
+    }
 
     public function page(ItemSelector $selector, array $filters, ?array $after, int $limit): array
     {

@@ -52,6 +52,18 @@ final class MonitoringQueries
         return $this->work->page($scope->selector, $filters, $after, $limit);
     }
 
+    /**
+     * Flow metrics over the viewer's scope only (05 P8).
+     *
+     * @return array{throughput: int, lead_time_days: array{count: int, median: float|null, p85: float|null}, cycle_time_days: array{count: int, median: float|null, p85: float|null}, aging_days: array{count: int, median: float|null, p85: float|null}}
+     */
+    public function flowMetrics(Authenticatable $actor, MonitoringScope $scope, string $from, string $to): array
+    {
+        $this->audit->recordUse($actor, $scope->viewerMembershipId, $scope->auditedGrantIds);
+
+        return $this->work->flowMetrics($scope->selector, $from, $to);
+    }
+
     public function item(Authenticatable $actor, MonitoringScope $scope, string $itemId): MonitoredItem
     {
         $item = $this->work->find($scope->selector, $itemId) ?? throw MonitoringNotFound::make();

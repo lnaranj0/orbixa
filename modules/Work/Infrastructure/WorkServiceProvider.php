@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
 use Modules\Work\Application\WorkGuard;
+use Modules\Work\Contracts\FlowMetrics;
 use Modules\Work\Contracts\ItemCategories;
 use Modules\Work\Contracts\Monitoring\MonitoredWorkReader;
 use Modules\Work\Contracts\ReadOnlyItemAccess;
@@ -21,6 +22,7 @@ final class WorkServiceProvider extends ServiceProvider
         $this->app->bind(MonitoredWorkReader::class, PostgresMonitoredWorkReader::class);
         $this->app->bind(StatusUsage::class, PostgresStatusUsage::class);
         $this->app->bind(ItemCategories::class, PostgresItemCategories::class);
+        $this->app->bind(FlowMetrics::class, PostgresFlowMetrics::class);
         $this->app->when(WorkGuard::class)->needs('$readOnlyAccess')->giveTagged(ReadOnlyItemAccess::TAG);
     }
 
