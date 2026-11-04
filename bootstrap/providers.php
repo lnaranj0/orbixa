@@ -6,6 +6,7 @@ use App\Providers\HorizonServiceProvider;
 use Modules\Access\Infrastructure\AccessServiceProvider;
 use Modules\Audit\Infrastructure\AuditServiceProvider;
 use Modules\IdentityTenancy\Infrastructure\IdentityTenancyServiceProvider;
+use Modules\Monitoring\Infrastructure\MonitoringServiceProvider;
 use Modules\Platform\Infrastructure\PlatformServiceProvider;
 use Modules\Portfolio\Infrastructure\PortfolioServiceProvider;
 use Modules\Teams\Infrastructure\TeamsServiceProvider;
@@ -24,4 +25,5 @@ return [
     TeamsServiceProvider::class,
     PortfolioServiceProvider::class,
     WorkServiceProvider::class,
+    MonitoringServiceProvider::class,
 ];
