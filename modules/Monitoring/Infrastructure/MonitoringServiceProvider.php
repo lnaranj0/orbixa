@@ -20,5 +20,7 @@ final class MonitoringServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(dirname(__DIR__).'/Database/Migrations');
+        $this->loadRoutesFrom(dirname(__DIR__).'/Presentation/routes.php');
+        $this->loadViewsFrom(dirname(__DIR__).'/Presentation/views', 'monitoring');
     }
 }
