@@ -23,6 +23,8 @@ final class RlsCatalogTest extends SecurityTestCase
         'public.jobs',
         'public.job_batches',
         'public.failed_jobs',
+        // 06 G3: webhook dedup register, no payload and no organization.
+        'integrations.webhook_deliveries',
     ];
 
     /**

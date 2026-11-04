@@ -23,6 +23,8 @@ final class GlobalTablePrivilegesTest extends SecurityTestCase
         'jobs' => [],
         'job_batches' => [],
         'failed_jobs' => ['SELECT', 'INSERT', 'DELETE'],
+        // 06 G3: dedup register only; insert and look up, never update or delete.
+        'integrations.webhook_deliveries' => ['SELECT', 'INSERT'],
     ];
 
     /** @var array<string, list<string>> */
@@ -38,7 +40,7 @@ final class GlobalTablePrivilegesTest extends SecurityTestCase
             foreach (self::PRIVILEGES as $privilege) {
                 $granted = DB::selectOne(
                     'select has_table_privilege(current_user, ?, ?) as granted',
-                    ["public.{$table}", $privilege]
+                    [str_contains($table, '.') ? $table : "public.{$table}", $privilege]
                 )->granted;
 
                 $this->assertSame(
@@ -74,6 +76,7 @@ final class GlobalTablePrivilegesTest extends SecurityTestCase
             "select tablename from pg_tables where schemaname = 'public' order by 1"
         ), 'tablename');
 
-        $this->assertEqualsCanonicalizing(array_keys(self::EXPECTED_TABLES), $tables);
+        $public = array_values(array_filter(array_keys(self::EXPECTED_TABLES), fn (string $table) => ! str_contains($table, '.')));
+        $this->assertEqualsCanonicalizing($public, $tables);
     }
 }
