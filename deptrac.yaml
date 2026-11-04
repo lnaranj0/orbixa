@@ -68,8 +68,17 @@ deptrac:
               value: '^Modules\\Teams\\Contracts\\'
     - name: PortfolioContracts
       collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Portfolio\\Contracts\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Portfolio\\Contracts\\Catalog\\'
+    - name: PortfolioCatalogContracts
+      collectors:
         - type: classLike
-          value: '^Modules\\Portfolio\\Contracts\\'
+          value: '^Modules\\Portfolio\\Contracts\\Catalog\\'
     - name: PortfolioInternals
       collectors:
         - type: bool
@@ -81,8 +90,18 @@ deptrac:
               value: '^Modules\\Portfolio\\Contracts\\'
     - name: WorkContracts
       collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Work\\Contracts\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Work\\Contracts\\Monitoring\\'
+    # 04 M7: trusted readers without an actor; only Monitoring may use them.
+    - name: WorkMonitoringContracts
+      collectors:
         - type: classLike
-          value: '^Modules\\Work\\Contracts\\'
+          value: '^Modules\\Work\\Contracts\\Monitoring\\'
     - name: WorkInternals
       collectors:
         - type: bool
@@ -158,6 +177,7 @@ deptrac:
       - TeamsContracts
     PortfolioInternals:
       - PortfolioContracts
+      - PortfolioCatalogContracts
       - TeamsContracts
       - IdentityTenancyContracts
       - AccessContracts
@@ -168,8 +188,11 @@ deptrac:
       - AccessContracts
       - TeamsContracts
       - PortfolioContracts
+    WorkMonitoringContracts: ~
+    PortfolioCatalogContracts: ~
     WorkInternals:
       - WorkContracts
+      - WorkMonitoringContracts
       - PortfolioContracts
       - TeamsContracts
       - IdentityTenancyContracts
@@ -179,6 +202,8 @@ deptrac:
       - PlatformContracts
     MonitoringInternals:
       - MonitoringContracts
+      - WorkMonitoringContracts
+      - PortfolioCatalogContracts
       - WorkContracts
       - PortfolioContracts
       - TeamsContracts
