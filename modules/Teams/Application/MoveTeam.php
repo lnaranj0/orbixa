@@ -7,6 +7,7 @@ use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
 use Modules\Teams\Contracts\HierarchyViolation;
+use Modules\Teams\Contracts\TeamOperationDenied;
 use Modules\Teams\Infrastructure\TeamStore;
 
 /** Reparents a team (or makes it a root with null); history + team.moved. */
@@ -25,6 +26,15 @@ final class MoveTeam
 
         if ($newParentTeamId !== null && ! TeamStore::isUuid($newParentTeamId)) {
             throw HierarchyViolation::because(HierarchyViolation::PARENT);
+        }
+        // Both ends: a lead cannot move their team out of their branch, and
+        // only the organization level can turn a team into a root.
+        if ($newParentTeamId === null) {
+            if (! $this->guard->managesOrganizationTeams($actor)) {
+                throw TeamOperationDenied::because('teams.manage is required to create root teams.');
+            }
+        } else {
+            $this->guard->requireManageDestination($actor, $actorMembershipId, $newParentTeamId);
         }
 
         $this->teams->lockHierarchy($organization);

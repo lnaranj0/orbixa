@@ -21,7 +21,6 @@ final class CreateTeam
     public function handle(Authenticatable $actor, string $name, ?string $parentTeamId = null): string
     {
         [$organization, $actorMembershipId] = $this->guard->context($actor);
-        $this->guard->requireCreate($actor);
 
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > 120) {
@@ -30,6 +29,7 @@ final class CreateTeam
         if ($parentTeamId !== null && ! TeamStore::isUuid($parentTeamId)) {
             throw HierarchyViolation::because(HierarchyViolation::PARENT);
         }
+        $this->guard->requireCreate($actor, $actorMembershipId, $parentTeamId);
 
         $this->teams->lockHierarchy($organization);
         $teamId = $this->teams->create($name, $parentTeamId, $actorMembershipId);

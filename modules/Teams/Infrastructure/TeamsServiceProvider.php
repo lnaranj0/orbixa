@@ -3,6 +3,7 @@
 namespace Modules\Teams\Infrastructure;
 
 use Illuminate\Support\ServiceProvider;
+use Modules\Access\Contracts\ScopedRoleProvider;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
 use Modules\Teams\Contracts\TeamDirectory;
@@ -15,6 +16,7 @@ final class TeamsServiceProvider extends ServiceProvider
         $this->app->tag([TeamsManifest::class], ModuleManifest::TAG);
         $this->app->tag([TeamsLifecycle::class], OrganizationLifecycle::TAG);
         $this->app->bind(TeamDirectory::class, PostgresTeamDirectory::class);
+        $this->app->tag([TeamsScopedRoleProvider::class], ScopedRoleProvider::TAG);
     }
 
     public function boot(): void

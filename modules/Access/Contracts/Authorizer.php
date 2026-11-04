@@ -11,4 +11,11 @@ use Illuminate\Contracts\Auth\Authenticatable;
 interface Authorizer
 {
     public function can(Authenticatable $actor, Permission $permission): bool;
+
+    /**
+     * True when the actor holds the permission at organization level, or a
+     * scoped role over the given team/project grants it (D4). Outside a
+     * context, or without an active membership, always false.
+     */
+    public function canWithin(Authenticatable $actor, Permission $permission, Scope $scope): bool;
 }
