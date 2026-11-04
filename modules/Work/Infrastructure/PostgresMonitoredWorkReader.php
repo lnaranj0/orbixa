@@ -28,6 +28,7 @@ final class PostgresMonitoredWorkReader implements MonitoredWorkReader
                 $bindings[] = $filters[$column];
             }
         }
+        [$where, $bindings] = $this->narrowed($where, $bindings, $filters);
         if ($after !== null) {
             $where .= ' and (i.updated_at, i.id) < (?::timestamptz, ?::uuid)';
             array_push($bindings, $after[0], $after[1]);
@@ -40,13 +41,13 @@ final class PostgresMonitoredWorkReader implements MonitoredWorkReader
         )));
     }
 
-    public function counts(ItemSelector $selector): array
+    public function counts(ItemSelector $selector, array $filters = []): array
     {
         $result = ['total' => 0, 'by_status' => [], 'by_priority' => []];
         if ($selector->isEmpty()) {
             return $result;
         }
-        [$where, $bindings] = $this->predicate($selector);
+        [$where, $bindings] = $this->narrowed(...[...$this->predicate($selector), $filters]);
 
         foreach ($this->connection()->select(
             "select i.status, i.priority, count(*) as total from work.items i where {$where} group by i.status, i.priority",
@@ -84,6 +85,27 @@ final class PostgresMonitoredWorkReader implements MonitoredWorkReader
         [$where, $bindings] = $this->predicate($selector);
 
         return $this->connection()->selectOne("select 1 as found from work.items i where i.id = ?::uuid and ({$where})", [$itemId, ...$bindings]) !== null;
+    }
+
+    /**
+     * AND filters by person or teams on top of the selector.
+     *
+     * @param  list<mixed>  $bindings
+     * @param  array{assignee_membership_id?: string, team_ids?: list<string>}  $filters
+     * @return array{0: string, 1: list<mixed>}
+     */
+    private function narrowed(string $where, array $bindings, array $filters): array
+    {
+        if (isset($filters['assignee_membership_id'])) {
+            $where .= ' and exists (select 1 from work.item_assignments a where a.item_id = i.id and a.removed_at is null and a.membership_id = ?::uuid)';
+            $bindings[] = $filters['assignee_membership_id'];
+        }
+        if (isset($filters['team_ids'])) {
+            $where .= ' and exists (select 1 from work.item_team_links l where l.item_id = i.id and l.unlinked_at is null and l.team_id = any(?::uuid[]))';
+            $bindings[] = ItemStore::pgArray($filters['team_ids']);
+        }
+
+        return [$where, $bindings];
     }
 
     /**

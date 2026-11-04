@@ -11,6 +11,7 @@ use Modules\Monitoring\Contracts\GrantNotFound;
 use Modules\Monitoring\Contracts\GrantOperationDenied;
 use Modules\Monitoring\Contracts\GrantRejected;
 use Modules\Monitoring\Contracts\GrantVersionConflict;
+use Modules\Monitoring\Contracts\MonitoringNotFound;
 use Modules\Platform\Contracts\Http\InvalidCursor;
 use Modules\Platform\Contracts\Idempotency\IdempotencyConflict;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
@@ -75,6 +76,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(WorkRuleViolation::class, fn (WorkRuleViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
         $exceptions->map(WorkVersionConflict::class, fn (WorkVersionConflict $e) => new ConflictHttpException($e->getMessage(), $e));
 
+        $exceptions->map(MonitoringNotFound::class, fn (MonitoringNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(GrantNotFound::class, fn (GrantNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(GrantOperationDenied::class, fn (GrantOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(GrantRejected::class, fn (GrantRejected $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));

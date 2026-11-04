@@ -145,6 +145,22 @@ final class GrantStore
         )));
     }
 
+    /**
+     * Grants of the viewer valid right now (M8): not revoked, started and
+     * not expired. Evaluated on every read, never cached.
+     *
+     * @return list<GrantRow>
+     */
+    public function validFor(string $viewerMembershipId): array
+    {
+        return array_values(array_map(fn (object $row) => self::row($row), $this->connection()->select(
+            'select '.self::COLUMNS.' from monitoring.grants
+              where viewer_membership_id = ?::uuid and revoked_at is null and starts_at <= now() and expires_at > now()
+              order by id',
+            [$viewerMembershipId]
+        )));
+    }
+
     public static function isUuid(?string $value): bool
     {
         return $value !== null && preg_match(self::UUID, $value) === 1;
