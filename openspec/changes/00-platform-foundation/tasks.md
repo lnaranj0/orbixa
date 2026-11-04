@@ -2,13 +2,15 @@
 
 > Mantener tareas sin marcar hasta contar con evidencias de código, CI y pruebas.
 
-- [ ] 1. Crear aplicación Laravel y convenciones estrictas de módulos; CI ejecuta pruebas de arquitectura, estilo y análisis estático.
+- [x] 1. Crear aplicación Laravel y convenciones estrictas de módulos; CI ejecuta pruebas de arquitectura, estilo y análisis estático.
   - Hecho:
     - `modules/{Platform,Audit}` con Contracts, Infrastructure, Presentation, Database/Migrations y Tests.
     - Providers explícitos en `bootstrap/providers.php` y `ModuleManifest` por módulo.
     - deptrac sin violaciones, con un fixture de violación que hace fallar la revisión (`ModuleBoundariesTest`).
     - PHPStan nivel 8 sin errores y Pint en verde, en local.
-  - Pendiente: primera ejecución real de `.github/workflows/ci.yml`, que requiere remoto y push autorizados.
+  - CI (`.github/workflows/ci.yml`) en verde en PHP 8.4 y 8.5. Evidencia: run `41764833803`, commit `bc8f2ef`, PR #1.
+    - En cada job: Pint, Larastan nivel 8 `[OK] No errors`, deptrac sin violaciones y aprovisionamiento sobre PostgreSQL 18 efímero.
+    - En cada job: 120 tests y 335 aserciones.
 - [x] 2. Configurar PostgreSQL 18 con rol de migración separado del runtime y privilegios mínimos; Redis y workers.
   - Hecho:
     - Roles `orbixa_migrator`, `orbixa_app` y `orbixa_relay` sin SUPERUSER ni BYPASSRLS, en desarrollo y en pruebas.
@@ -40,7 +42,7 @@
 - [x] Pruebas de permisos permitidos/denegados para roles y alcances aplicables.
   - Evidencia: roles de base de datos runtime, migrador y relay (`RuntimeRolePrivilegesTest`, `RelayRolePrivilegesTest`, `GlobalTablePrivilegesTest`).
   - Los roles de aplicación (owner, admin, viewer…) llegan con `01-identity-tenancy`.
-- [ ] Revisión automática de límites modulares en CI y contratos de integración.
-  - deptrac está configurado y probado en local; falta la primera ejecución en CI.
+- [x] Revisión automática de límites modulares en CI y contratos de integración.
+  - Evidencia: el paso deptrac del CI (run `41764833803`) y `ModuleBoundariesTest`, que comprueba que importar los internals de otro módulo hace fallar la revisión.
 - [x] Documentar migraciones, rollback, cambios de API y evidencia de funcionamiento.
   - Evidencia: `docs/operations/*`. No hubo cambios de API en este cambio.
