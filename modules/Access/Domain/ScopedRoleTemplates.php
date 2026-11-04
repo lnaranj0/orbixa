@@ -24,6 +24,8 @@ final class ScopedRoleTemplates
                 Permission::WorkTransition, Permission::WorkAssign,
                 // 05 D-A: approving (moving into done) in their own project.
                 Permission::WorkApprove,
+                // 05 P9: cycles of their own project.
+                Permission::PlanningManage,
             ],
         ];
     }

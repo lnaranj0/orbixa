@@ -7,6 +7,7 @@ use Modules\Access\Infrastructure\AccessServiceProvider;
 use Modules\Audit\Infrastructure\AuditServiceProvider;
 use Modules\IdentityTenancy\Infrastructure\IdentityTenancyServiceProvider;
 use Modules\Monitoring\Infrastructure\MonitoringServiceProvider;
+use Modules\Planning\Infrastructure\PlanningServiceProvider;
 use Modules\Platform\Infrastructure\PlatformServiceProvider;
 use Modules\Portfolio\Infrastructure\PortfolioServiceProvider;
 use Modules\Teams\Infrastructure\TeamsServiceProvider;
@@ -28,4 +29,5 @@ return [
     WorkServiceProvider::class,
     MonitoringServiceProvider::class,
     WorkflowServiceProvider::class,
+    PlanningServiceProvider::class,
 ];

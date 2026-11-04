@@ -12,6 +12,9 @@ use Modules\Monitoring\Contracts\GrantOperationDenied;
 use Modules\Monitoring\Contracts\GrantRejected;
 use Modules\Monitoring\Contracts\GrantVersionConflict;
 use Modules\Monitoring\Contracts\MonitoringNotFound;
+use Modules\Planning\Contracts\CycleNotFound;
+use Modules\Planning\Contracts\PlanningOperationDenied;
+use Modules\Planning\Contracts\PlanningRuleViolation;
 use Modules\Platform\Contracts\Http\InvalidCursor;
 use Modules\Platform\Contracts\Idempotency\IdempotencyConflict;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
@@ -90,6 +93,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(WorkflowOperationDenied::class, fn (WorkflowOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(WorkflowRuleViolation::class, fn (WorkflowRuleViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
         $exceptions->map(WorkflowVersionConflict::class, fn (WorkflowVersionConflict $e) => new ConflictHttpException($e->getMessage(), $e));
+
+        $exceptions->map(CycleNotFound::class, fn (CycleNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(PlanningOperationDenied::class, fn (PlanningOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(PlanningRuleViolation::class, fn (PlanningRuleViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
