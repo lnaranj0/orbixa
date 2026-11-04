@@ -3,10 +3,10 @@
 namespace Modules\Teams\Application;
 
 use Illuminate\Contracts\Auth\Authenticatable;
-use InvalidArgumentException;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
+use Modules\Platform\Contracts\Validation\InputRejected;
 use Modules\Teams\Contracts\HierarchyViolation;
 use Modules\Teams\Infrastructure\TeamStore;
 
@@ -24,7 +24,7 @@ final class CreateTeam
 
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > 120) {
-            throw new InvalidArgumentException('Team name must be 1-120 characters.');
+            throw InputRejected::because('Team name must be 1-120 characters.');
         }
         if ($parentTeamId !== null && ! TeamStore::isUuid($parentTeamId)) {
             throw HierarchyViolation::because(HierarchyViolation::PARENT);

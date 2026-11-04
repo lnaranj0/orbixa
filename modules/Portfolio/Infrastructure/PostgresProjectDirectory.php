@@ -4,9 +4,6 @@ namespace Modules\Portfolio\Infrastructure;
 
 use Illuminate\Contracts\Auth\Authenticatable;
 use Modules\IdentityTenancy\Contracts\CurrentMembership;
-use Modules\Platform\Contracts\Events\ActorReference;
-use Modules\Platform\Contracts\Events\DomainEvent;
-use Modules\Platform\Contracts\Events\DomainEventRecorder;
 use Modules\Portfolio\Contracts\ProjectDirectory;
 use Modules\Portfolio\Contracts\ProjectSummary;
 use Modules\Portfolio\Contracts\ProjectVisibility;
@@ -17,7 +14,7 @@ final class PostgresProjectDirectory implements ProjectDirectory
         private readonly ProjectVisibility $visibility,
         private readonly ProjectStore $projects,
         private readonly CurrentMembership $memberships,
-        private readonly DomainEventRecorder $events,
+        private readonly SensitiveAccessAudit $audit,
     ) {}
 
     public function find(Authenticatable $actor, string $projectId): ?ProjectSummary
@@ -27,19 +24,11 @@ final class PostgresProjectDirectory implements ProjectDirectory
         }
 
         $project = $this->projects->find($projectId);
-
-        // D3: opening a restricted project through the organization role
-        // (not as a direct member) leaves an audit trace.
         $membershipId = $this->memberships->idFor($actor);
+
         if ($project !== null && $project->confidentiality === 'restricted' && $membershipId !== null
             && ! $this->projects->isActiveMember($project->id, $membershipId)) {
-            $this->events->record(
-                new DomainEvent('audit.sensitive_access.granted', 1, 'project', $project->id, [
-                    'reason' => 'organization_role',
-                    'viewer_membership_id' => $membershipId,
-                ]),
-                ActorReference::human((string) $actor->getAuthIdentifier()),
-            );
+            $this->audit->record($actor, $membershipId, $project->id, 'view');
         }
 
         return $project;
@@ -49,6 +38,35 @@ final class PostgresProjectDirectory implements ProjectDirectory
     {
         $accessible = $this->visibility->accessibleProjects($actor);
 
-        return $this->projects->list($accessible->all ? null : $accessible->ids);
+        return $this->redacted($actor, $accessible->all, $this->projects->list($accessible->all ? null : $accessible->ids));
+    }
+
+    public function page(Authenticatable $actor, array $filters, ?array $after, int $limit): array
+    {
+        $accessible = $this->visibility->accessibleProjects($actor);
+
+        return $this->redacted($actor, $accessible->all, $this->projects->page($accessible->all ? null : $accessible->ids, $filters, $after, $limit));
+    }
+
+    /**
+     * Only organization-level viewers ($all) can see restricted projects
+     * they are not direct members of; for those, drop the description.
+     *
+     * @param  list<ProjectSummary>  $projects
+     * @return list<ProjectSummary>
+     */
+    private function redacted(Authenticatable $actor, bool $all, array $projects): array
+    {
+        $membershipId = $this->memberships->idFor($actor);
+        if (! $all || $membershipId === null) {
+            return $projects;
+        }
+
+        $direct = array_flip($this->projects->directProjectIdsOf($membershipId));
+
+        return array_map(
+            fn (ProjectSummary $p) => $p->confidentiality === 'restricted' && ! isset($direct[$p->id]) ? $p->withoutDescription() : $p,
+            $projects,
+        );
     }
 }

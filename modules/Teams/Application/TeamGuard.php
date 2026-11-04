@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Modules\Access\Contracts\Permission;
 use Modules\Access\Contracts\Scope;
 use Modules\IdentityTenancy\Contracts\CurrentMembership;
+use Modules\IdentityTenancy\Contracts\MembershipLookup;
 use Modules\Platform\Contracts\Tenancy\OrganizationId;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Contracts\Tenancy\TenantContextRequired;
@@ -29,6 +30,7 @@ final class TeamGuard
         private readonly CurrentMembership $memberships,
         private readonly Gate $gate,
         private readonly TeamStore $teams,
+        private readonly MembershipLookup $lookup,
     ) {}
 
     /**
@@ -38,6 +40,13 @@ final class TeamGuard
     {
         $organization = $this->tenant->current() ?? throw TenantContextRequired::forOperation('Managing teams');
         $membershipId = $this->memberships->idFor($actor) ?? throw TeamOperationDenied::because('No active membership.');
+
+        // Hold the actor's authority until commit: a concurrent revocation or
+        // demotion waits for this operation instead of racing it.
+        if (! $this->lookup->lockActive($membershipId)) {
+            throw TeamOperationDenied::because('No active membership.');
+        }
+        $this->teams->lockLeadRolesOf($membershipId);
 
         return [$organization, $membershipId];
     }

@@ -70,20 +70,20 @@ final class TeamApiController
         return new JsonResponse(['data' => $team]);
     }
 
-    public function store(Request $request, ActiveOrganization $active, CreateTeam $create, TeamStore $teams, IdempotencyStore $idempotency): JsonResponse
+    public function store(Request $request, ActiveOrganization $active, CreateTeam $create, TeamStore $teams, TeamVisibility $visibility, IdempotencyStore $idempotency): JsonResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', 'regex:/^[^\\x00]*$/u'],
             'parent_team_id' => ['sometimes', 'nullable', 'string', 'max:64'],
         ]);
         $user = $this->user($request);
 
-        $body = $this->tenant->runFor($user, $active->id, fn () => $this->idempotent($request, $idempotency, 'teams.store', $validated, function () use ($user, $create, $teams, $validated) {
+        $body = $this->tenant->runFor($user, $active->id, fn () => $this->visibleOrNotFound($user, $visibility, $this->idempotent($request, $idempotency, 'teams.store', $validated, function () use ($user, $create, $teams, $validated) {
             $parent = isset($validated['parent_team_id']) ? (string) $validated['parent_team_id'] : null;
             $teamId = $create->handle($user, (string) $validated['name'], $parent);
 
             return ['data' => $teams->page([$teamId], [], null, 1)[0] ?? throw TeamNotFound::make()];
-        }));
+        })));
 
         return new JsonResponse($body, 201);
     }
@@ -133,6 +133,22 @@ final class TeamApiController
         $this->tenant->runFor($user, $active->id, fn () => $remove->handle($user, $teamId, $membershipId));
 
         return response()->noContent();
+    }
+
+    /**
+     * A replayed response is only returned while the actor can still see the team.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function visibleOrNotFound(Authenticatable $actor, TeamVisibility $visibility, array $body): array
+    {
+        $data = $body['data'] ?? null;
+        if (! is_array($data) || ! is_string($data['id'] ?? null) || $visibility->find($actor, $data['id']) === null) {
+            throw TeamNotFound::make();
+        }
+
+        return $body;
     }
 
     /**

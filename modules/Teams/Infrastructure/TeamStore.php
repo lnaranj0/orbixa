@@ -115,6 +115,15 @@ final class TeamStore
         return $row === null ? null : (string) ((array) $row)['role'];
     }
 
+    /** FOR SHARE on the membership's active lead rows (blocks a concurrent demotion until commit). */
+    public function lockLeadRolesOf(string $membershipId): void
+    {
+        $this->connection()->select(
+            "select 1 from teams.team_members where membership_id = ?::uuid and role = 'lead' and removed_at is null for share",
+            [$membershipId]
+        );
+    }
+
     public function closeAllForMembership(string $membershipId, string $removedByMembershipId): int
     {
         return $this->connection()->update(

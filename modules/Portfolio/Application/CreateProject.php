@@ -3,10 +3,10 @@
 namespace Modules\Portfolio\Application;
 
 use Illuminate\Contracts\Auth\Authenticatable;
-use InvalidArgumentException;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
+use Modules\Platform\Contracts\Validation\InputRejected;
 use Modules\Portfolio\Infrastructure\ProjectStore;
 
 /**
@@ -40,7 +40,7 @@ final class CreateProject
         $this->guard->requireCreate($actor);
 
         if (preg_match(self::KEY_PATTERN, $key) !== 1) {
-            throw new InvalidArgumentException('Project key must be 2-10 uppercase letters or digits, starting with a letter.');
+            throw InputRejected::because('Project key must be 2-10 uppercase letters or digits, starting with a letter.');
         }
         $name = ProjectInput::name($name);
         ProjectInput::oneOf('type', $type, self::TYPES);

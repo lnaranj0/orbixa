@@ -34,7 +34,7 @@ final class ProjectApiController
 
     public function __construct(private readonly TenantContext $tenant) {}
 
-    public function index(Request $request, ActiveOrganization $active, ProjectVisibility $visibility, ProjectStore $projects, CursorCodec $cursors): JsonResponse
+    public function index(Request $request, ActiveOrganization $active, ProjectDirectory $directory, CursorCodec $cursors): JsonResponse
     {
         $validated = $request->validate([
             'limit' => ['sometimes', 'integer', 'between:1,100'],
@@ -52,11 +52,7 @@ final class ProjectApiController
         $after = isset($validated['cursor']) ? $this->position($cursors->decode($resource, (string) $validated['cursor'])) : null;
         $user = $this->user($request);
 
-        $page = $this->tenant->runFor($user, $active->id, function () use ($user, $visibility, $projects, $filters, $after, $limit) {
-            $accessible = $visibility->accessibleProjects($user);
-
-            return $projects->page($accessible->all ? null : $accessible->ids, $filters, $after, $limit + 1);
-        });
+        $page = $this->tenant->runFor($user, $active->id, fn () => $directory->page($user, $filters, $after, $limit + 1));
 
         $next = null;
         if (count($page) > $limit) {
@@ -78,18 +74,18 @@ final class ProjectApiController
         return new JsonResponse(['data' => self::resource($project)]);
     }
 
-    public function store(Request $request, ActiveOrganization $active, CreateProject $create, ProjectStore $projects, IdempotencyStore $idempotency): JsonResponse
+    public function store(Request $request, ActiveOrganization $active, CreateProject $create, ProjectStore $projects, ProjectVisibility $visibility, IdempotencyStore $idempotency): JsonResponse
     {
         $validated = $request->validate([
             'key' => ['required', 'string', 'regex:'.CreateProject::KEY_PATTERN],
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', 'regex:/^[^\\x00]*$/u'],
             'type' => ['sometimes', 'string', 'in:'.implode(',', CreateProject::TYPES)],
             'confidentiality' => ['sometimes', 'string', 'in:'.implode(',', CreateProject::CONFIDENTIALITY)],
-            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000', 'regex:/^[^\\x00]*$/u'],
         ]);
         $user = $this->user($request);
 
-        $body = $this->tenant->runFor($user, $active->id, fn () => $this->idempotent($request, $idempotency, 'projects.store', $validated, function () use ($user, $create, $projects, $validated) {
+        $body = $this->tenant->runFor($user, $active->id, fn () => $this->visibleOrNotFound($user, $visibility, $this->idempotent($request, $idempotency, 'projects.store', $validated, function () use ($user, $create, $projects, $validated) {
             $projectId = $create->handle(
                 $user,
                 (string) $validated['key'],
@@ -100,7 +96,7 @@ final class ProjectApiController
             );
 
             return ['data' => self::resource($projects->find($projectId) ?? throw ProjectNotFound::make())];
-        }));
+        })));
 
         return new JsonResponse($body, 201);
     }
@@ -109,8 +105,8 @@ final class ProjectApiController
     {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:0'],
-            'name' => ['sometimes', 'string', 'max:120'],
-            'description' => ['sometimes', 'nullable', 'string', 'max:5000'],
+            'name' => ['sometimes', 'string', 'max:120', 'regex:/^[^\\x00]*$/u'],
+            'description' => ['sometimes', 'nullable', 'string', 'max:5000', 'regex:/^[^\\x00]*$/u'],
             'type' => ['sometimes', 'string', 'in:'.implode(',', CreateProject::TYPES)],
             'status' => ['sometimes', 'string', 'in:'.implode(',', UpdateProject::STATUSES)],
             'confidentiality' => ['sometimes', 'string', 'in:'.implode(',', CreateProject::CONFIDENTIALITY)],
@@ -197,8 +193,25 @@ final class ProjectApiController
     }
 
     /**
+     * A replayed response is only returned while the actor can still see the
+     * project: the stored body is not a lasting authorization.
+     *
+     * @param  array<string, mixed>  $body
+     * @return array<string, mixed>
+     */
+    private function visibleOrNotFound(Authenticatable $actor, ProjectVisibility $visibility, array $body): array
+    {
+        $data = $body['data'] ?? null;
+        if (! is_array($data) || ! is_string($data['id'] ?? null) || ! $visibility->canView($actor, $data['id'])) {
+            throw ProjectNotFound::make();
+        }
+
+        return $body;
+    }
+
+    /**
      * @param  list<string>  $position
-     * @return list<string>
+     * @return array{0: string, 1: string}
      */
     private function position(array $position): array
     {
@@ -206,7 +219,7 @@ final class ProjectApiController
             throw InvalidCursor::make();
         }
 
-        return $position;
+        return [$position[0], $position[1]];
     }
 
     /**

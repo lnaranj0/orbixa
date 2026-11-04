@@ -26,9 +26,16 @@ final class RemoveTeamMember
         if ($membershipId === $actorMembershipId) {
             throw TeamOperationDenied::because('Use the leave flow to remove yourself.');
         }
-        if (! TeamStore::isUuid($membershipId) || $this->teams->removeMember($teamId, $membershipId, $actorMembershipId, 'removed') === 0) {
+        $role = TeamStore::isUuid($membershipId) ? $this->teams->lockMemberRole($teamId, $membershipId) : null;
+        if ($role === null) {
             throw TeamMemberNotFound::make();
         }
+        // Removing a lead is a demotion: organization-level only, like appointing one (D14).
+        if ($role === 'lead' && ! $this->guard->managesOrganizationTeams($actor)) {
+            throw TeamOperationDenied::because('Removing a lead requires the organization-level teams.manage.');
+        }
+
+        $this->teams->removeMember($teamId, $membershipId, $actorMembershipId, 'removed');
 
         $this->events->record(
             new DomainEvent('team.member.removed', 1, 'team', $teamId, ['membership_id' => $membershipId]),

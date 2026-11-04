@@ -2,14 +2,17 @@
 
 namespace Modules\Platform\Infrastructure;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Database\Console\DumpCommand;
 use Illuminate\Database\Console\Seeds\SeedCommand;
+use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
 use Modules\Platform\Contracts\Http\CursorCodec;
@@ -54,6 +57,9 @@ final class PlatformServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Every tenant write route (POST/PATCH/DELETE) uses throttle:writes.
+        RateLimiter::for('writes', fn (Request $request) => Limit::perMinute(60)->by('user:'.$request->user()?->getAuthIdentifier()));
+
         $prohibitDestructive = ! config('database.allow_destructive_commands');
 
         // Covers db:wipe, migrate:fresh, migrate:refresh, migrate:reset, migrate:rollback.

@@ -15,6 +15,7 @@ use Modules\Portfolio\Application\AddProjectMember;
 use Modules\Portfolio\Application\CreateProject;
 use Modules\Teams\Application\AssignTeamMember;
 use Modules\Teams\Application\CreateTeam;
+use Modules\Teams\Application\RemoveTeamMember;
 
 /**
  * 02 increment 7a: JSON API end to end over HTTP on real PostgreSQL (D10,
@@ -198,6 +199,46 @@ final class PortfolioApiTest extends SecurityTestCase
         $this->assertSame($mine, $created->json('data.parent_team_id'));
         $this->postJson($this->url('teams'), ['name' => 'Ghost child', 'parent_team_id' => (string) Str::uuid()])->assertStatus(422);
         $this->postJson($this->url("teams/{$notMine}/archive"))->assertNoContent();
+    }
+
+    public function test_b3_idempotent_replay_is_reauthorized(): void
+    {
+        $lead = $this->member('developer');
+        $parent = $this->as($this->owner, function () use ($lead) {
+            $parent = $this->app->make(CreateTeam::class)->handle($this->owner, 'Parent');
+            $this->app->make(AssignTeamMember::class)->handle($this->owner, $parent, $this->membershipId($lead), 'lead');
+
+            return $parent;
+        });
+
+        $headers = ['Idempotency-Key' => 'subteam-0001'];
+        $body = ['name' => 'Sub', 'parent_team_id' => $parent];
+        $this->actingAs($lead)->postJson($this->url('teams'), $body, $headers)->assertCreated();
+        $this->postJson($this->url('teams'), $body, $headers)->assertCreated();
+
+        $this->as($this->owner, fn () => $this->app->make(RemoveTeamMember::class)->handle($this->owner, $parent, $this->membershipId($lead)));
+        $this->actingAs($lead)->postJson($this->url('teams'), $body, $headers)->assertNotFound();
+    }
+
+    public function test_b5_writes_are_throttled(): void
+    {
+        $project = $this->as($this->owner, fn () => $this->app->make(CreateProject::class)->handle($this->owner, 'THR', 'Throttle'));
+        $this->actingAs($this->owner);
+        for ($i = 0; $i < 60; $i++) {
+            $this->deleteJson($this->url("projects/{$project}/teams/".Str::uuid()))->assertNotFound();
+        }
+        $this->deleteJson($this->url("projects/{$project}/teams/".Str::uuid()))->assertStatus(429);
+    }
+
+    public function test_b6_rejected_input_is_422_never_500(): void
+    {
+        $project = $this->as($this->owner, fn () => $this->app->make(CreateProject::class)->handle($this->owner, 'INP', 'Input'));
+        $this->actingAs($this->owner);
+
+        $this->patchJson($this->url("projects/{$project}"), ['expected_version' => 0, 'name' => "bad\0name"])->assertStatus(422);
+        $this->patchJson($this->url("projects/{$project}"), ['expected_version' => 0, 'name' => '   '])->assertStatus(422);
+        $this->postJson($this->url('teams'), ['name' => "n\0ul"])->assertStatus(422);
+        $this->assertSame('Input', $this->getJson($this->url("projects/{$project}"))->json('data.name'));
     }
 
     private function url(string $path): string

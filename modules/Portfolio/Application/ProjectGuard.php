@@ -7,6 +7,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Modules\Access\Contracts\Permission;
 use Modules\Access\Contracts\Scope;
 use Modules\IdentityTenancy\Contracts\CurrentMembership;
+use Modules\IdentityTenancy\Contracts\MembershipLookup;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Contracts\Tenancy\TenantContextRequired;
 use Modules\Portfolio\Contracts\ProjectNotFound;
@@ -29,6 +30,8 @@ final class ProjectGuard
         private readonly Gate $gate,
         private readonly ProjectVisibility $visibility,
         private readonly TeamDirectory $teams,
+        private readonly MembershipLookup $lookup,
+        private readonly ProjectStore $projects,
     ) {}
 
     /** @return string actor membership id */
@@ -36,7 +39,16 @@ final class ProjectGuard
     {
         $this->tenant->current() ?? throw TenantContextRequired::forOperation('Managing projects');
 
-        return $this->memberships->idFor($actor) ?? throw ProjectOperationDenied::because('No active membership.');
+        $membershipId = $this->memberships->idFor($actor) ?? throw ProjectOperationDenied::because('No active membership.');
+
+        // Hold the actor's authority until commit: a concurrent revocation or
+        // demotion waits for this operation instead of racing it.
+        if (! $this->lookup->lockActive($membershipId)) {
+            throw ProjectOperationDenied::because('No active membership.');
+        }
+        $this->projects->lockManagerRolesOf($membershipId);
+
+        return $membershipId;
     }
 
     public function requireCreate(Authenticatable $actor): void

@@ -3,12 +3,12 @@
 namespace Modules\Portfolio\Application;
 
 use Illuminate\Contracts\Auth\Authenticatable;
-use InvalidArgumentException;
 use Modules\IdentityTenancy\Contracts\MembershipLookup;
 use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
+use Modules\Platform\Contracts\Validation\InputRejected;
 use Modules\Portfolio\Contracts\ProjectOperationDenied;
 use Modules\Portfolio\Infrastructure\ProjectStore;
 
@@ -31,7 +31,7 @@ final class AddProjectMember
     public function handle(Authenticatable $actor, string $projectId, string $membershipId, string $role = 'member'): void
     {
         if (! in_array($role, ['member', 'manager'], true)) {
-            throw new InvalidArgumentException('Role must be member or manager.');
+            throw InputRejected::because('Role must be member or manager.');
         }
 
         $actorMembershipId = $this->guard->context($actor);

@@ -3,12 +3,12 @@
 namespace Modules\Teams\Application;
 
 use Illuminate\Contracts\Auth\Authenticatable;
-use InvalidArgumentException;
 use Modules\IdentityTenancy\Contracts\MembershipLookup;
 use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
+use Modules\Platform\Contracts\Validation\InputRejected;
 use Modules\Teams\Contracts\HierarchyViolation;
 use Modules\Teams\Contracts\TeamOperationDenied;
 use Modules\Teams\Infrastructure\TeamStore;
@@ -32,7 +32,7 @@ final class AssignTeamMember
     public function handle(Authenticatable $actor, string $teamId, string $membershipId, string $role = 'member'): void
     {
         if (! in_array($role, ['member', 'lead'], true)) {
-            throw new InvalidArgumentException('Role must be member or lead.');
+            throw InputRejected::because('Role must be member or lead.');
         }
 
         [, $actorMembershipId] = $this->guard->context($actor);

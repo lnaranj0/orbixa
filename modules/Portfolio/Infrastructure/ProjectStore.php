@@ -18,6 +18,8 @@ final class ProjectStore
 {
     private const COLUMNS = 'id::text as id, key, name, type, status, confidentiality, lock_version, description';
 
+    private const UPDATABLE = ['name', 'description', 'type', 'status', 'confidentiality'];
+
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 
     public function __construct(private readonly DatabaseManager $db) {}
@@ -129,6 +131,10 @@ final class ProjectStore
      */
     public function update(string $projectId, int $expectedVersion, array $changes): bool
     {
+        // Column names are interpolated: never trust the caller's allowlist alone.
+        if ($changes === [] || array_diff(array_keys($changes), self::UPDATABLE) !== []) {
+            throw new \InvalidArgumentException('Only mutable project columns can be updated.');
+        }
         $assignments = implode(', ', array_map(fn (string $column) => "{$column} = ?", array_keys($changes)));
 
         return $this->connection()->update(
@@ -199,6 +205,26 @@ final class ProjectStore
         ) !== null;
     }
 
+    /**
+     * @return list<string> projects where the membership is an active direct member
+     */
+    public function directProjectIdsOf(string $membershipId): array
+    {
+        return array_values(array_map(fn (object $row) => (string) ((array) $row)['id'], $this->connection()->select(
+            'select project_id::text as id from portfolio.project_members where membership_id = ?::uuid and removed_at is null',
+            [$membershipId]
+        )));
+    }
+
+    /** FOR SHARE on the membership's active manager rows (blocks a concurrent demotion until commit). */
+    public function lockManagerRolesOf(string $membershipId): void
+    {
+        $this->connection()->select(
+            "select 1 from portfolio.project_members where membership_id = ?::uuid and role = 'manager' and removed_at is null for share",
+            [$membershipId]
+        );
+    }
+
     public function closeAllForMembership(string $membershipId, string $removedByMembershipId): int
     {
         return $this->connection()->update(
@@ -226,6 +252,7 @@ final class ProjectStore
 
             throw match (true) {
                 $state === '23514' && str_contains($exception->getMessage(), 'project must not be archived') => ProjectRuleViolation::because(ProjectRuleViolation::ARCHIVED),
+                $state === '23514' && str_contains($exception->getMessage(), 'team must be active'),
                 $state === '23503' && str_contains($exception->getMessage(), 'project_team_links_team_fk') => ProjectRuleViolation::because(ProjectRuleViolation::TEAM),
                 default => $exception,
             };

@@ -16,7 +16,6 @@ use Modules\Portfolio\Application\CreateProject;
 use Modules\Portfolio\Contracts\ProjectDirectory;
 use Modules\Portfolio\Contracts\ProjectKeyUnavailable;
 use Modules\Portfolio\Contracts\ProjectNotFound;
-use Modules\Portfolio\Contracts\ProjectVisibility;
 use Modules\Portfolio\Infrastructure\ProjectStore;
 
 /** Minimal project screens until 11-design-system (D18); same rules as the API. */
@@ -29,27 +28,24 @@ final class ProjectPageController
         private readonly Gate $gate,
     ) {}
 
-    public function index(Request $request, ActiveOrganization $active, ProjectVisibility $visibility, ProjectStore $projects, CursorCodec $cursors): View
+    public function index(Request $request, ActiveOrganization $active, ProjectDirectory $directory, CursorCodec $cursors): View
     {
         $resource = 'projects-page:'.$active->id->value;
         $cursor = $request->query('cursor');
         $after = null;
         if (is_string($cursor) && $cursor !== '') {
-            $after = $cursors->decode($resource, $cursor);
-            if (count($after) !== 2 || ! ProjectStore::isUuid($after[1])) {
+            $position = $cursors->decode($resource, $cursor);
+            if (count($position) !== 2 || ! ProjectStore::isUuid($position[1])) {
                 throw InvalidCursor::make();
             }
+            $after = [$position[0], $position[1]];
         }
         $user = $this->user($request);
 
-        [$page, $canCreate] = $this->tenant->runFor($user, $active->id, function () use ($user, $visibility, $projects, $after) {
-            $accessible = $visibility->accessibleProjects($user);
-
-            return [
-                $projects->page($accessible->all ? null : $accessible->ids, [], $after, self::PAGE_SIZE + 1),
-                $this->gate->forUser($user)->allows('projects.create'),
-            ];
-        });
+        [$page, $canCreate] = $this->tenant->runFor($user, $active->id, fn () => [
+            $directory->page($user, [], $after, self::PAGE_SIZE + 1),
+            $this->gate->forUser($user)->allows('projects.create'),
+        ]);
 
         $next = null;
         if (count($page) > self::PAGE_SIZE) {
@@ -80,7 +76,7 @@ final class ProjectPageController
     {
         $validated = $request->validate([
             'key' => ['required', 'string', 'regex:'.CreateProject::KEY_PATTERN],
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', 'regex:/^[^\\x00]*$/u'],
             'type' => ['required', 'string', 'in:'.implode(',', CreateProject::TYPES)],
             'confidentiality' => ['required', 'string', 'in:'.implode(',', CreateProject::CONFIDENTIALITY)],
         ]);

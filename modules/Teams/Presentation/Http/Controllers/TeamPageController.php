@@ -62,7 +62,7 @@ final class TeamPageController
     public function store(Request $request, ActiveOrganization $active, CreateTeam $create): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:120'],
+            'name' => ['required', 'string', 'max:120', 'regex:/^[^\\x00]*$/u'],
             'parent_team_id' => ['nullable', 'string', 'max:64'],
         ]);
         $user = $this->user($request);

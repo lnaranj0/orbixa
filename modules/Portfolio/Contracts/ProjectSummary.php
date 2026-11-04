@@ -14,4 +14,9 @@ final readonly class ProjectSummary
         public int $version,
         public ?string $description = null,
     ) {}
+
+    public function withoutDescription(): self
+    {
+        return new self($this->id, $this->key, $this->name, $this->type, $this->status, $this->confidentiality, $this->version);
+    }
 }

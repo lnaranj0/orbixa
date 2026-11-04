@@ -2,7 +2,7 @@
 
 namespace Modules\Portfolio\Application;
 
-use InvalidArgumentException;
+use Modules\Platform\Contracts\Validation\InputRejected;
 
 /** Shared validation of project attributes (mirrors the table CHECKs). */
 final class ProjectInput
@@ -11,7 +11,7 @@ final class ProjectInput
     {
         $name = trim($name);
         if ($name === '' || mb_strlen($name) > 120) {
-            throw new InvalidArgumentException('Project name must be 1-120 characters.');
+            throw InputRejected::because('Project name must be 1-120 characters.');
         }
 
         return $name;
@@ -21,7 +21,7 @@ final class ProjectInput
     {
         $description = $description === null ? null : trim($description);
         if ($description !== null && mb_strlen($description) > 5000) {
-            throw new InvalidArgumentException('Project description must be at most 5000 characters.');
+            throw InputRejected::because('Project description must be at most 5000 characters.');
         }
 
         return $description === '' ? null : $description;
@@ -33,7 +33,7 @@ final class ProjectInput
     public static function oneOf(string $field, string $value, array $allowed): void
     {
         if (! in_array($value, $allowed, true)) {
-            throw new InvalidArgumentException("Invalid project {$field}.");
+            throw InputRejected::because("Invalid project {$field}.");
         }
     }
 }

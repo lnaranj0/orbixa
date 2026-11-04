@@ -110,7 +110,8 @@ final class PortfolioSchemaTest extends SecurityTestCase
 
             $link(DB::connection(), $team);
             $this->assertSqlState('23505', fn (Connection $db) => $link($db, $team));
-            $this->assertSqlState('23503', fn (Connection $db) => $link($db, $foreignTeam));
+            // The active-team trigger (RLS: a foreign team is invisible) fires before the foreign key.
+            $this->assertSqlState('23514', fn (Connection $db) => $link($db, $foreignTeam));
 
             foreach (['projects', 'project_members', 'project_team_links'] as $table) {
                 $this->assertSqlState('42501', fn (Connection $db) => $db->delete("delete from portfolio.{$table}"));
