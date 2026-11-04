@@ -38,8 +38,11 @@
   - Evidencia: suite completa (188 tests) contra `postgres-test` como `orbixa_app`.
 - [x] Pruebas de permisos permitidos/denegados para roles y alcances aplicables.
   - Evidencia: `AccessRolesTest`, `InvitationsAndRevocationTest` y `HttpFlowsTest` (403 y 404).
-- [ ] Revisión automática de límites modulares en CI y contratos de integración.
-  - deptrac sin violaciones en local, con capas IdentityTenancy y Access. Pendiente la ejecución en CI del PR.
+- [x] Revisión automática de límites modulares en CI y contratos de integración.
+  - Evidencia: CI del PR #2 (run `41769101598`, commit `198f332`) en PHP 8.4 y 8.5.
+    - deptrac con capas IdentityTenancy y Access, sin violaciones.
+    - Larastan nivel 8 `[OK] No errors`.
+    - 188 tests y 675 aserciones.
 - [x] Documentar migraciones, rollback, cambios de API y evidencia de funcionamiento.
   - Evidencia: `design.md` (decisiones, rutas HTTP, jobs) y `docs/operations/database-roles.md` (rol lector).
   - Las migraciones son solo roll-forward, y cada una se aplicó con backup previo en desarrollo.
