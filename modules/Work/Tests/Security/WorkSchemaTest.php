@@ -157,6 +157,104 @@ final class WorkSchemaTest extends SecurityTestCase
         $second->rollBack();
     }
 
+    public function test_assignments_and_team_links(): void
+    {
+        $this->inOrg(function () {
+            $project = $this->project('ASG');
+            $item = $this->item($project, 'task');
+            $owner = $this->ownerMembership();
+            $assign = fn (Connection $db, string $membership, string $role) => $db->insert(
+                'insert into work.item_assignments (organization_id, item_id, membership_id, role, assigned_by_membership_id)
+                 values (platform.current_organization_id(), ?, ?, ?, ?)',
+                [$item, $membership, $role, $owner]
+            );
+
+            $assign(DB::connection(), $owner, 'owner');
+            $this->assertSqlState('23505', fn (Connection $db) => $assign($db, $owner, 'collaborator'));
+            $this->assertSqlState('23503', fn (Connection $db) => $assign($db, (string) Str::uuid(), 'collaborator'));
+            $this->assertSqlState('42501', fn (Connection $db) => $db->delete('delete from work.item_assignments'));
+            $this->assertSqlState('42501', fn (Connection $db) => $db->update('update work.item_assignments set membership_id = membership_id'));
+
+            $team = (string) DB::selectOne(
+                "insert into teams.teams (organization_id, name, created_by_membership_id) values (platform.current_organization_id(), 'T', ?) returning id::text as id",
+                [$owner]
+            )->id;
+            $archived = (string) DB::selectOne(
+                "insert into teams.teams (organization_id, name, created_by_membership_id) values (platform.current_organization_id(), 'Old', ?) returning id::text as id",
+                [$owner]
+            )->id;
+            DB::update("update teams.teams set status = 'archived', archived_at = now() where id = ?", [$archived]);
+            $link = fn (Connection $db, string $teamId) => $db->insert(
+                'insert into work.item_team_links (organization_id, item_id, team_id, linked_by_membership_id)
+                 values (platform.current_organization_id(), ?, ?, ?)',
+                [$item, $teamId, $owner]
+            );
+            $link(DB::connection(), $team);
+            $this->assertSqlState('23505', fn (Connection $db) => $link($db, $team));
+            $this->assertSqlState('23514', fn (Connection $db) => $link($db, $archived));
+            $this->assertSqlState('23514', fn (Connection $db) => $link($db, (string) Str::uuid()));
+        });
+    }
+
+    public function test_dependencies_reject_cycles_and_other_projects(): void
+    {
+        $this->inOrg(function () {
+            $project = $this->project('DEP');
+            $other = $this->project('DPO');
+            [$a, $b, $c] = [$this->item($project, 'task'), $this->item($project, 'task'), $this->item($project, 'task')];
+            $foreign = $this->item($other, 'task');
+
+            $this->depend(DB::connection(), $project, $a, $b);
+            $this->depend(DB::connection(), $project, $b, $c);
+            $this->assertSqlState('23514', fn (Connection $db) => $this->depend($db, $project, $b, $a));
+            $this->assertSqlState('23514', fn (Connection $db) => $this->depend($db, $project, $c, $a));
+            $this->assertSqlState('23514', fn (Connection $db) => $this->depend($db, $project, $a, $a));
+            $this->assertSqlState('23505', fn (Connection $db) => $this->depend($db, $project, $a, $b));
+            $this->assertSqlState('23503', fn (Connection $db) => $this->depend($db, $project, $a, $foreign));
+            $this->assertSqlState('23503', fn (Connection $db) => $this->depend($db, $other, $a, $foreign));
+        });
+    }
+
+    public function test_concurrent_dependencies_wait_for_each_other(): void
+    {
+        [$project, $a, $b] = $this->inOrg(function () {
+            $project = $this->project('DCC');
+
+            return [$project, $this->item($project, 'task'), $this->item($project, 'task')];
+        });
+        config(['database.connections.pgsql_second' => config('database.connections.pgsql')]);
+        $first = DB::connection('pgsql');
+        $second = DB::connection('pgsql_second');
+
+        $first->beginTransaction();
+        $this->enter($first);
+        $this->depend($first, $project, $a, $b);
+
+        $second->beginTransaction();
+        $this->enter($second);
+        $second->statement("set local lock_timeout = '300ms'");
+        try {
+            $this->depend($second, $project, $b, $a);
+            $this->fail('The opposite dependency must wait for the first transaction.');
+        } catch (QueryException $blocked) {
+            $this->assertSame('55P03', $blocked->errorInfo[0]);
+        } finally {
+            $second->rollBack();
+        }
+        $first->commit();
+
+        $this->inOrg(fn () => $this->assertSqlState('23514', fn (Connection $db) => $this->depend($db, $project, $b, $a)));
+    }
+
+    private function depend(Connection $db, string $project, string $blocker, string $blocked): void
+    {
+        $db->insert(
+            'insert into work.item_dependencies (organization_id, project_id, blocker_item_id, blocked_item_id, created_by_membership_id)
+             values (platform.current_organization_id(), ?, ?, ?, ?)',
+            [$project, $blocker, $blocked, $this->ownerMembership()]
+        );
+    }
+
     private function allocate(Connection $db, string $project): int
     {
         return (int) $db->selectOne(

@@ -19,6 +19,9 @@ final class WorkManifest implements ModuleManifest
             'work.labels',
             'work.item_labels',
             'work.item_events',
+            'work.item_assignments',
+            'work.item_team_links',
+            'work.item_dependencies',
         ];
     }
 }
