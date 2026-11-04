@@ -8,7 +8,7 @@ El sistema SHALL permitir a un administrador autorizado conceder visibilidad de 
 #### Scenario: Visor de una persona
 - **GIVEN** viewer V en organización A y grant activo `user` hacia miembro U de A
 - **WHEN** V consulta monitoreo
-- **THEN** únicamente ve actividades relacionadas directamente con U según reglas definidas de owner/asignado/colaborador, respetando confidencialidad, y no puede editar.
+- **THEN** únicamente ve los items donde U es owner o colaborador activo, respetando confidencialidad, y no puede editar.
 
 #### Scenario: Visor de un equipo
 - **GIVEN** viewer V con grant `team` sobre T sin `include_descendants`
@@ -38,6 +38,11 @@ El sistema SHALL permitir crear, modificar y revocar grants solo con `monitoring
 - **WHEN** intenta conceder a viewer de A acceso a usuario/equipo de organización B
 - **THEN** la operación se rechaza y se registra intento, sin revelar detalles de B.
 
+#### Scenario: Concesión sin escalada
+- **GIVEN** un miembro sin `monitoring.grants.manage`, un administrador que se concede a sí mismo, un destinatario sin `monitoring.view` o un grant `restricted` emitido sin `monitoring.restricted.view`
+- **WHEN** se intenta crear o ampliar el grant
+- **THEN** se rechaza sin crear ni modificar grants
+
 ### Requirement: Protección uniforme de recursos
 El sistema SHALL aplicar el mismo alcance a detalle, listados, filtros, búsqueda, contadores, reportes, exportación, archivos y APIs; SHALL ocultar datos confidenciales y prohibir escrituras por rol viewer.
 
@@ -49,7 +54,17 @@ El sistema SHALL aplicar el mismo alcance a detalle, listados, filtros, búsqued
 #### Scenario: Viewer intenta mutar tarea
 - **GIVEN** viewer con grant aplicable a item I
 - **WHEN** invoca PATCH, transición, comentario, aprobación o asignación
-- **THEN** se deniega 403, no cambia el item y se audita según política.
+- **THEN** se deniega 403, no cambia el item y se audita según política; sobre un item que ningún grant suyo cubre recibe el 404 idéntico de siempre.
+
+#### Scenario: Viewer sin grant
+- **GIVEN** un viewer miembro activo de A sin ningún grant vigente
+- **WHEN** consulta panel, listados, detalle, equipos o usuarios de monitoreo
+- **THEN** obtiene cero datos: listados vacíos, conteos en cero y 404 en cualquier detalle
+
+#### Scenario: Cursor tras revocación
+- **GIVEN** un viewer paginando con un cursor emitido bajo un grant
+- **WHEN** el grant se revoca o expira y usa el cursor
+- **THEN** el cursor se rechaza y la siguiente lectura refleja el nuevo alcance
 
 ### Requirement: Implementación modular
 El sistema SHALL mantener Monitoring como módulo separado de Access, Work, Portfolio y Teams; consumirá interfaces declaradas y consultas autorizadas, no repositorios internos de otros módulos.

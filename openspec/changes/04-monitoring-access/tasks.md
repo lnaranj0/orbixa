@@ -2,7 +2,7 @@
 
 > Mantener tareas sin marcar hasta contar con evidencias de código, CI y pruebas.
 
-- [ ] 1. Crear monitoring_grants con viewer_user_id, organization_id, target_type, target_id, include_descendants, vigencia, issuer y estado.
+- [ ] 1. Crear monitoring.grants con viewer_membership_id, organization_id, scope y destino tipado (target_membership_id / target_team_id), include_descendants, visibility_level, vigencia, issuer y estado (M1).
 - [ ] 2. Implementar MonitoringAccessPolicy y visibilidad centralizada por usuario/equipo/organización combinando grants vigentes.
 - [ ] 3. Exigir pertenencia al tenant y límites de confidencialidad; default deny; no inferir acceso de rol viewer.
 - [ ] 4. Implementar UI de visores solo lectura y administración auditada de grants; exportación separadamente autorizada.
