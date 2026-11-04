@@ -1,0 +1,78 @@
+# Credentials for the containers live in ./.secrets/ (gitignored), never in the
+# Laravel .env. Create them once with mode 600 (see docs/operations/database-roles.md).
+#
+#   postgres       development server (persistent volume), 127.0.0.1:5433
+#   postgres-test  ephemeral test server (tmpfs, profile "test"), 127.0.0.1:5434
+#   redis          cache + queues, password required, 127.0.0.1:6380
+
+services:
+  postgres:
+    image: postgres:18
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: orbixa
+      POSTGRES_USER: orbixa_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_bootstrap_password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    secrets:
+      - pg_bootstrap_password
+    ports:
+      - "127.0.0.1:5433:5432"
+    volumes:
+      - orbixa_pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbixa_bootstrap -d orbixa"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  postgres-test:
+    image: postgres:18
+    profiles: ["test"]
+    environment:
+      POSTGRES_DB: orbixa_test
+      POSTGRES_USER: orbixa_bootstrap
+      POSTGRES_PASSWORD_FILE: /run/secrets/pg_test_bootstrap_password
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    secrets:
+      - pg_test_bootstrap_password
+    ports:
+      - "127.0.0.1:5434:5432"
+    tmpfs:
+      - /var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U orbixa_bootstrap -d orbixa_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    secrets:
+      - redis_password
+    ports:
+      - "127.0.0.1:6380:6379"
+    volumes:
+      - orbixa_redis:/data
+    command:
+      - sh
+      - -c
+      - exec redis-server --appendonly yes --requirepass "$$(cat /run/secrets/redis_password)"
+    healthcheck:
+      test: ["CMD-SHELL", "REDISCLI_AUTH=\"$$(cat /run/secrets/redis_password)\" redis-cli ping | grep -q PONG"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+secrets:
+  pg_bootstrap_password:
+    file: ./.secrets/pg_bootstrap_password
+  pg_test_bootstrap_password:
+    file: ./.secrets/pg_test_bootstrap_password
+  redis_password:
+    file: ./.secrets/redis_password
+
+volumes:
+  orbixa_pgdata:
+  orbixa_redis:

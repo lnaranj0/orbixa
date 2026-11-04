@@ -1,0 +1,39 @@
+context: |
+  Proyecto Engineering Management Platform (EMP).
+  Aplicación SaaS multi-organización de gestión de ingeniería con Laravel modular, PostgreSQL 18 y Redis.
+  Backlog y estado del trabajo pertenecen a EMP; repositorios y archivos OpenSpec pertenecen a Git.
+  La arquitectura es siempre modular con contratos y límites de dominio verificables.
+  El rol viewer de monitoreo exige grants explícitos a usuario, equipo o toda la organización.
+  PostgreSQL RLS complementa las policies de Laravel y debe fallar cerrado.
+  Los equipos pueden trabajar en Kanban continuo, sprints opcionales o flujo híbrido.
+  Toda entidad de dominio con alcance organizacional lleva organization_id y autorización contextual.
+  Agentes IA inicialmente solo son entidades registradas y trazables, sin ejecución autónoma.
+
+  Los requerimientos formales de terceros se modelan en Requests y RequirementDocuments, separados de Work.
+  Distinguir siempre quien captura de quien solicita; toda firma corresponde a una versión inmutable con SHA-256.
+  La etiqueta ADDR es un tipo configurable sin asumir expansión de siglas.
+  Escribir artefactos y criterios de aceptación en español.
+rules:
+  proposal:
+    - Definir alcance y exclusiones explícitos.
+  specs:
+    - Incluir escenarios GIVEN WHEN THEN, incluyendo autorización denegada y aislamiento de organización.
+  design:
+    - Documentar tradeoffs, límites multi-tenant, idempotencia y política de permisos.
+  tasks:
+    - Agrupar por entregables verificables y ordenar por dependencias.
+    - No marcar tareas completas sin evidencia de pruebas.
+operations:
+  apply:
+    guidance:
+      - Ejecutar pruebas de aislamiento multi-tenant y autorización antes de cada entrega.
+      - Evitar almacenar tokens o secretos en bitácoras.
+  archive:
+    guidance:
+      - Registrar versión, cambios desplegados y decisiones pendientes.
+
+# Orbixa v5 — product and UI architectural rules
+# Core product includes general Project Management and Engineering Management.
+# General projects MUST function without GitHub, OpenSpec, sprints or AI agents.
+# Presentation SHALL use shared DesignSystem inspired by TailAdmin; reuse Blade/Livewire components.
+# All project governance data SHALL enforce organization context + authorization + PostgreSQL RLS.

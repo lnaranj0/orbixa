@@ -1,0 +1,54 @@
+# Module boundaries (00-platform-foundation, spec "Módulos desacoplados").
+# A module's internals (Domain, Application, Infrastructure, Presentation,
+# Database) may depend on its own internals and on any module's Contracts.
+# Nobody may depend on another module's internals.
+deptrac:
+  paths:
+    - ./app
+    - ./modules
+  exclude_files:
+    - '#/modules/[^/]+/Tests/#'
+    - '#/modules/[^/]+/Database/Migrations/#'
+  layers:
+    - name: App
+      collectors:
+        - type: classLike
+          value: '^App\\'
+    - name: PlatformContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Platform\\Contracts\\'
+    - name: PlatformInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Platform\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Platform\\Contracts\\'
+    - name: AuditContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Audit\\Contracts\\'
+    - name: AuditInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Audit\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Audit\\Contracts\\'
+  ruleset:
+    App:
+      - PlatformContracts
+      - AuditContracts
+    PlatformContracts: ~
+    PlatformInternals:
+      - PlatformContracts
+    AuditContracts:
+      - PlatformContracts
+    AuditInternals:
+      - AuditContracts
+      - PlatformContracts

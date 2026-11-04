@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality-and-tests:
+    name: PHP ${{ matrix.php }} · PostgreSQL 18
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        php: ['8.4', '8.5']
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          extensions: pdo_pgsql, pgsql, mbstring, intl, pcntl, posix
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Code style (Pint)
+        run: vendor/bin/pint --test
+
+      - name: Static analysis (Larastan level 8)
+        run: vendor/bin/phpstan analyse --no-progress --memory-limit=1G
+
+      - name: Module boundaries (deptrac)
+        run: vendor/bin/deptrac analyse --no-progress
+
+      # Ephemeral PostgreSQL 18 with the same role model as production:
+      # bootstrap superuser only provisions; tests run as orbixa_app.
+      # All credentials are random per run and never stored.
+      - name: Generate ephemeral credentials
+        run: |
+          umask 077
+          secret() { openssl rand -base64 48 | tr -d '/+=\n' | cut -c1-32; }
+          bootstrap=$(secret); app=$(secret); migrator=$(secret); relay=$(secret)
+          echo "::add-mask::$bootstrap"; echo "::add-mask::$app"; echo "::add-mask::$migrator"; echo "::add-mask::$relay"
+          {
+            echo "PG_BOOTSTRAP_PASSWORD=$bootstrap"
+            echo "ORBIXA_APP_PASSWORD=$app"
+            echo "ORBIXA_MIGRATOR_PASSWORD=$migrator"
+            echo "ORBIXA_RELAY_PASSWORD=$relay"
+          } >> "$GITHUB_ENV"
+          sed -e "s|^APP_KEY=.*|APP_KEY=base64:$(openssl rand -base64 32)|" \
+              -e "s|^DB_PASSWORD=.*|DB_PASSWORD=$app|" \
+              -e "s|^DB_MIGRATOR_PASSWORD=.*|DB_MIGRATOR_PASSWORD=$migrator|" \
+              -e "s|^DB_RELAY_PASSWORD=.*|DB_RELAY_PASSWORD=$relay|" \
+              .env.testing.example > .env.testing
+
+      - name: Start PostgreSQL 18 (ephemeral)
+        run: |
+          docker run -d --name orbixa-pg-ci \
+            -e POSTGRES_DB=orbixa_test -e POSTGRES_USER=orbixa_bootstrap \
+            -e POSTGRES_PASSWORD="$PG_BOOTSTRAP_PASSWORD" \
+            -e POSTGRES_INITDB_ARGS=--auth-host=scram-sha-256 \
+            -p 127.0.0.1:5434:5432 --tmpfs /var/lib/postgresql postgres:18
+          for i in $(seq 1 30); do
+            docker exec orbixa-pg-ci pg_isready -U orbixa_bootstrap -d orbixa_test && break
+            sleep 2
+          done
+
+      - name: Provision roles, privileges and sentinel
+        env:
+          ORBIXA_PROVISION_CONTAINER: orbixa-pg-ci
+        run: |
+          scripts/db/provision.sh test roles
+          scripts/db/provision.sh test database
+          scripts/db/provision.sh test sentinel
+
+      - name: Migrate test database as orbixa_migrator
+        run: composer test:db:migrate
+
+      - name: Verify runtime roles
+        run: php artisan orbixa:db:verify --with-migrator --with-relay --env=testing
+
+      - name: Test suites (Unit, Feature, Security)
+        run: php artisan test
+
+      - name: Provisioning report
+        if: always()
+        env:
+          ORBIXA_PROVISION_CONTAINER: orbixa-pg-ci
+        run: scripts/db/provision.sh test verify

@@ -1,0 +1,68 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "attribution": {
+    "commit": "",
+    "pr": "",
+    "sessionUrl": false
+  },
+  "permissions": {
+    "allow": [
+      "Bash(openspec list)",
+      "Bash(openspec list *)",
+      "Bash(openspec show *)",
+      "Bash(openspec status *)",
+      "Bash(openspec validate *)",
+      "Bash(git status)",
+      "Bash(git diff)",
+      "Bash(git diff --stat)",
+      "Bash(php artisan test)",
+      "Bash(php artisan test --testsuite=Unit)",
+      "Bash(php artisan test --testsuite=Security)",
+      "Bash(vendor/bin/pint --test)"
+    ],
+    "ask": [
+      "Bash(php artisan migrate)",
+      "Bash(php artisan migrate *)",
+      "Bash(php artisan db:seed *)",
+      "Bash(php artisan orbixa:test-db:reset)",
+      "Bash(composer db:migrate)",
+      "Bash(composer test:db:migrate)",
+      "Bash(composer require *)",
+      "Bash(composer remove *)",
+      "Bash(composer update *)",
+      "Bash(scripts/db/provision.sh *)",
+      "Bash(./scripts/db/provision.sh *)",
+      "Bash(docker compose *)",
+      "Bash(psql *)",
+      "Bash(git commit *)",
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Bash(php artisan migrate:fresh)",
+      "Bash(php artisan migrate:fresh *)",
+      "Bash(php artisan migrate:refresh)",
+      "Bash(php artisan migrate:refresh *)",
+      "Bash(php artisan migrate:reset)",
+      "Bash(php artisan migrate:reset *)",
+      "Bash(php artisan migrate:rollback)",
+      "Bash(php artisan migrate:rollback *)",
+      "Bash(php artisan db:wipe)",
+      "Bash(php artisan db:wipe *)",
+      "Bash(php artisan db:seed)",
+      "Bash(git push --force *)",
+      "Bash(git push --force-with-lease *)",
+      "Bash(git push -f *)",
+      "Bash(git reset --hard *)",
+      "Bash(cat .env*)",
+      "Bash(cat .secrets/*)",
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.testing)",
+      "Read(./.env.compose)",
+      "Read(./.env.production)",
+      "Read(./.env.backup)",
+      "Read(./.secrets/**)",
+      "Edit(./.secrets/**)"
+    ]
+  }
+}

@@ -17,7 +17,31 @@ return [
     |
     */
 
-    'default' => env('DB_CONNECTION', 'sqlite'),
+    'default' => env('DB_CONNECTION', 'pgsql'),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Orbixa database role separation
+    |--------------------------------------------------------------------------
+    |
+    | The runtime connection ("pgsql") uses a non-owner role without
+    | BYPASSRLS. Schema changes run only through "pgsql_migrator", which owns
+    | the tables. Destructive Artisan commands (fresh, refresh, reset, wipe,
+    | rollback, seed, dump) stay blocked unless a human explicitly enables
+    | DB_ALLOW_DESTRUCTIVE_COMMANDS for a one-off, approved operation.
+    |
+    */
+
+    'migrator_connection' => 'pgsql_migrator',
+
+    'relay_connection' => 'pgsql_relay',
+
+    'allow_destructive_commands' => (bool) env('DB_ALLOW_DESTRUCTIVE_COMMANDS', false),
+
+    'ephemeral_test_database' => [
+        'name' => 'orbixa_test',
+        'sentinel' => 'orbixa:ephemeral-test',
+    ],
 
     /*
     |--------------------------------------------------------------------------
@@ -85,13 +109,44 @@ return [
         ],
 
         'pgsql' => [
+            // No DB_URL: credentials must come from DB_USERNAME/DB_PASSWORD so the
+            // runtime role cannot be silently replaced (checked by orbixa:db:verify).
             'driver' => 'pgsql',
-            'url' => env('DB_URL'),
             'host' => env('DB_HOST', '127.0.0.1'),
             'port' => env('DB_PORT', '5432'),
-            'database' => env('DB_DATABASE', 'laravel'),
-            'username' => env('DB_USERNAME', 'root'),
+            'database' => env('DB_DATABASE', 'orbixa'),
+            'username' => env('DB_USERNAME', 'orbixa_app'),
             'password' => env('DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        'pgsql_migrator' => [
+            'driver' => 'pgsql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_MIGRATOR_DATABASE', env('DB_DATABASE', 'orbixa')),
+            'username' => env('DB_MIGRATOR_USERNAME', 'orbixa_migrator'),
+            'password' => env('DB_MIGRATOR_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
+
+        // Outbox relay (docs/operations/outbox-relay.md, option A): reads and
+        // marks pending outbox rows across organizations, nothing else.
+        'pgsql_relay' => [
+            'driver' => 'pgsql',
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'orbixa'),
+            'username' => env('DB_RELAY_USERNAME', 'orbixa_relay'),
+            'password' => env('DB_RELAY_PASSWORD', ''),
             'charset' => env('DB_CHARSET', 'utf8'),
             'prefix' => '',
             'prefix_indexes' => true,
@@ -145,7 +200,7 @@ return [
 
     'redis' => [
 
-        'client' => env('REDIS_CLIENT', 'phpredis'),
+        'client' => env('REDIS_CLIENT', 'predis'),
 
         'options' => [
             'cluster' => env('REDIS_CLUSTER', 'redis'),
