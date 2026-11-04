@@ -3,6 +3,7 @@
 use Illuminate\Support\Facades\Route;
 use Modules\IdentityTenancy\Contracts\ActiveOrganization;
 use Modules\Work\Presentation\Http\Controllers\WorkApiController;
+use Modules\Work\Presentation\Http\Controllers\WorkPageController;
 
 // W11: session + CSRF ("web"), active organization re-verified per request.
 Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
@@ -27,4 +28,16 @@ Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
         Route::delete('/items/{item}/teams/{team}', [WorkApiController::class, 'unlinkTeam'])->middleware('throttle:writes')->name('teams.destroy');
         Route::post('/items/{item}/dependencies', [WorkApiController::class, 'addDependency'])->middleware('throttle:writes')->name('dependencies.store');
         Route::delete('/items/{item}/dependencies/{blocker}', [WorkApiController::class, 'removeDependency'])->middleware('throttle:writes')->name('dependencies.destroy');
+    });
+
+// W11: minimal screens until 11-design-system.
+Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
+    ->prefix('/o/{organization}')
+    ->name('work.')
+    ->group(function () {
+        Route::get('/projects/{project}/backlog', [WorkPageController::class, 'backlog'])->name('backlog');
+        Route::post('/projects/{project}/backlog', [WorkPageController::class, 'store'])->middleware('throttle:writes')->name('store');
+        Route::get('/my-work', [WorkPageController::class, 'myWork'])->name('mine');
+        Route::get('/items/{item}', [WorkPageController::class, 'show'])->name('show');
+        Route::post('/items/{item}/transitions', [WorkPageController::class, 'transition'])->middleware('throttle:writes')->name('transition');
     });

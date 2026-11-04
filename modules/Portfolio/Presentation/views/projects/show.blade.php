@@ -15,5 +15,6 @@
     @endif
 </section>
 
+<a href="{{ route('work.backlog', ['organization' => $organizationId, 'project' => $project->id]) }}" class="mt-6 mr-4 inline-block rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Ver backlog</a>
 <a href="{{ route('projects.index', ['organization' => $organizationId]) }}" class="mt-6 inline-block text-sky-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-sky-400 dark:text-sky-300">Volver a proyectos</a>
 @endsection

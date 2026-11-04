@@ -20,6 +20,7 @@
                     <a href="{{ route('organizations.members', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Miembros</a>
                     <a href="{{ route('teams.index', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Equipos</a>
                     <a href="{{ route('projects.index', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Proyectos</a>
+                    <a href="{{ route('work.mine', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Mi trabajo</a>
                 @endisset
                 <form method="POST" action="{{ route('logout') }}" class="pt-2">
                     @csrf

@@ -106,6 +106,27 @@ final class WorkGuard
         throw WorkOperationDenied::because("{$permission->value} is required.");
     }
 
+    /**
+     * Same rule as requireChange, as a boolean for screens.
+     *
+     * @param  ItemRow  $item
+     */
+    public function canChange(Authenticatable $actor, string $actorMembershipId, array $item, ProjectReference $project, Permission $permission): bool
+    {
+        try {
+            $this->requireChange($actor, $actorMembershipId, $item, $project, $permission);
+
+            return true;
+        } catch (WorkOperationDenied|WorkRuleViolation) {
+            return false;
+        }
+    }
+
+    public function canCreate(Authenticatable $actor, ProjectReference $project): bool
+    {
+        return ! $project->isArchived() && $this->allowsInProject($actor, Permission::WorkCreate, $project->id);
+    }
+
     /** Project-level management of labels: organization role or project manager. */
     public function requireProjectEdit(Authenticatable $actor, ProjectReference $project): void
     {
