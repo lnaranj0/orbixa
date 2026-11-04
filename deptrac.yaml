@@ -97,6 +97,13 @@ deptrac:
           must_not:
             - type: classLike
               value: '^Modules\\Work\\Contracts\\Monitoring\\'
+            - type: classLike
+              value: '^Modules\\Work\\Contracts\\Workflow\\'
+    # 05 P2: the transition port; only Work (consumer) and Workflow (implementation).
+    - name: WorkWorkflowContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Work\\Contracts\\Workflow\\'
     # 04 M7: trusted readers without an actor; only Monitoring may use them.
     - name: WorkMonitoringContracts
       collectors:
@@ -203,10 +210,12 @@ deptrac:
       - TeamsContracts
       - PortfolioContracts
     WorkMonitoringContracts: ~
+    WorkWorkflowContracts: ~
     PortfolioCatalogContracts: ~
     WorkInternals:
       - WorkContracts
       - WorkMonitoringContracts
+      - WorkWorkflowContracts
       - PortfolioContracts
       - TeamsContracts
       - IdentityTenancyContracts
@@ -228,6 +237,7 @@ deptrac:
       - PlatformContracts
     WorkflowInternals:
       - WorkflowContracts
+      - WorkWorkflowContracts
       - WorkContracts
       - PortfolioContracts
       - IdentityTenancyContracts

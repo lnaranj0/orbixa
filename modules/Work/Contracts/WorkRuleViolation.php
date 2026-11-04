@@ -25,6 +25,10 @@ final class WorkRuleViolation extends RuntimeException
 
     public const REASON = 'a reason is required';
 
+    public const BLOCKED = 'the item has open blockers';
+
+    public const WIP = 'work in progress limit reached';
+
     public const LABEL = 'label cannot be used';
 
     public const LABEL_LIMIT = 'too many labels';

@@ -6,6 +6,7 @@ use Illuminate\Contracts\Auth\Authenticatable;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
+use Modules\Work\Contracts\Workflow\TransitionPolicy;
 use Modules\Work\Contracts\WorkRuleViolation;
 use Modules\Work\Domain\ItemRules;
 use Modules\Work\Infrastructure\ItemStore;
@@ -21,6 +22,7 @@ final class CreateWorkItem
         private readonly WorkGuard $guard,
         private readonly ItemStore $items,
         private readonly DomainEventRecorder $events,
+        private readonly TransitionPolicy $workflow,
     ) {}
 
     /**
@@ -52,12 +54,16 @@ final class CreateWorkItem
             $this->items->lockHierarchy($project->id);
         }
 
+        $this->workflow->ensureWorkflow($project->id);
+        $initial = $this->workflow->initialStatus($project->id);
         $number = $this->items->allocateNumber($project->id);
-        $itemId = $this->items->create($project->id, $number, "{$project->key}-{$number}", $values, $actorMembershipId);
+        $itemId = $this->items->create($project->id, $number, "{$project->key}-{$number}", $values, $initial->id, $initial->category, $actorMembershipId);
+        $this->items->recordStatusChange($itemId, $project->id, null, null, $initial->id, $initial->category, $actorMembershipId);
 
         $this->items->recordActivity($itemId, 'created', $actorMembershipId, [
             'type' => ['to' => $values['type']],
-            'status' => ['to' => 'backlog'],
+            'status' => ['to' => $initial->category],
+            'workflow_status_id' => ['to' => $initial->id],
             'priority' => ['to' => $values['priority']],
         ]);
         $this->events->record(
