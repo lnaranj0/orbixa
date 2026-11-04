@@ -1,7 +1,7 @@
 # Orbixa — Project & Engineering Management
 
 ## Contexto y fuente de verdad
-- Producto: Orbixa. Laravel 13, PHP 8.3+, PostgreSQL 18, Predis/Redis, Blade + Livewire + Alpine + Tailwind, UI inspirada en TailAdmin.
+- Producto: Orbixa. Laravel 13, PHP 8.4+ (equipo en 8.5), PostgreSQL 18, Predis/Redis, Blade + Livewire + Alpine + Tailwind, UI inspirada en TailAdmin.
 - La documentación de arquitectura vive en `docs/`; los cambios y requisitos formales en `openspec/`.
 - **Nunca implementes un cambio sin leer su `proposal.md`, `design.md`, `tasks.md` y todos los `specs/**/spec.md`.** Valida el cambio con la CLI antes y después.
 - Trabaja solo en el cambio OpenSpec solicitado. No anticipes otros módulos.
