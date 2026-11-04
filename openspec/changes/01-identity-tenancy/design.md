@@ -56,6 +56,25 @@ Decisiones aprobadas el 2026-11-03 (opción A y D2–D10). Las propusieron los a
 - **Enlace de invitación:** se muestra una vez en pantalla y no se envía por correo, porque el mailer de desarrollo es `log` y escribiría el token en los logs. Al abrir el enlace, el token pasa a la sesión cifrada y la URL se limpia con una redirección.
 - **Pantallas mínimas:** Blade + Tailwind, provisionales hasta `11-design-system`.
 
+## Rutas HTTP añadidas (todas con `web` + `auth`, salvo las de login)
+| Método | Ruta | Descripción |
+| --- | --- | --- |
+| GET/POST | `/login`, POST `/logout` | Fortify (login mínimo) |
+| GET | `/` | Redirige a `/organizations` o a `/login` |
+| GET/POST | `/organizations` | Selector y creación de organización |
+| POST | `/organizations/switch` | Cambio de organización (regenera la sesión) |
+| GET/POST | `/invitations/{organization}/accept` | Abrir el enlace (el token pasa a la sesión) y aceptar |
+| GET | `/o/{organization}` | Organización activa (404 uniforme si no hay membresía) |
+| GET | `/o/{organization}/members` | Miembros (requiere `members.invite` o `members.manage`; si no, 403) |
+| POST | `/o/{organization}/members/invitations` | Invitar (`members.invite` más las reglas anti-escalada) |
+| POST | `/o/{organization}/members/{membership}/revoke` | Revocar (`members.manage`) |
+
+## Jobs con contexto de tenant
+- Los jobs implementan `TenantAwareJob` y guardan un `TenantScope` con los IDs de organización y usuario.
+- Un pipe del command bus (`RunTenantAwareJobs`) los ejecuta dentro de `TenantContext::runFor`, que verifica de nuevo la membresía.
+- Si la membresía fue revocada, el job se marca como fallido sin reintentos y sin efectos.
+- El handler corre dentro de la transacción del tenant, así que los jobs deben ser unidades cortas.
+
 ## Roles y permisos (D5, D7)
 - Plantillas por organización: `org_owner`, `org_admin`, `project_manager`, `team_lead`, `developer`, `reviewer`, `viewer`. Se copian al crear la organización, sin `db:seed`.
 - Solo se conceden las celdas "Sí" de `docs/PERMISSIONS.md`; las "Config." quedan sin conceder. `viewer`: cero permisos de dominio.

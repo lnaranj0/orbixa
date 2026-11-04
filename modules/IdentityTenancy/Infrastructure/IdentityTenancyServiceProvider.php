@@ -2,6 +2,7 @@
 
 namespace Modules\IdentityTenancy\Infrastructure;
 
+use Illuminate\Bus\Dispatcher as BusDispatcher;
 use Illuminate\Support\ServiceProvider;
 use Modules\IdentityTenancy\Application\AcceptInvitation;
 use Modules\IdentityTenancy\Application\CreateOrganization;
@@ -13,6 +14,7 @@ use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\IdentityTenancy\Contracts\RoleGrantGuard;
 use Modules\IdentityTenancy\Infrastructure\Invitations\DenyAllRoleGrantGuard;
 use Modules\IdentityTenancy\Infrastructure\Invitations\PostgresAdmissionVerifier;
+use Modules\IdentityTenancy\Infrastructure\Jobs\RunTenantAwareJobs;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresCurrentMembership;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresMembershipDirectory;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresMembershipVerifier;
@@ -41,6 +43,9 @@ final class IdentityTenancyServiceProvider extends ServiceProvider
 
     public function boot(): void
     {
+        // Tenant-aware queued jobs re-verify membership on every execution.
+        $this->app->make(BusDispatcher::class)->pipeThrough([RunTenantAwareJobs::class]);
+
         $this->loadMigrationsFrom(dirname(__DIR__).'/Database/Migrations');
         $this->loadRoutesFrom(dirname(__DIR__).'/Presentation/routes.php');
         $this->loadViewsFrom(dirname(__DIR__).'/Presentation/views', 'identity');
