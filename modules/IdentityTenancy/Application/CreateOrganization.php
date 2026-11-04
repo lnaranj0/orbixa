@@ -5,6 +5,7 @@ namespace Modules\IdentityTenancy\Application;
 use Illuminate\Contracts\Auth\Authenticatable;
 use Illuminate\Database\DatabaseManager;
 use InvalidArgumentException;
+use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\IdentityTenancy\Infrastructure\Membership\ActorIdentifier;
 use Modules\Platform\Contracts\Events\ActorReference;
 use Modules\Platform\Contracts\Events\DomainEvent;
@@ -17,14 +18,19 @@ use Modules\Platform\Contracts\Tenancy\TenantContext;
  * Spec "Crear organizaciones": the server generates the id, the creator gets
  * an active membership and organization.created is recorded, all in one
  * transaction (TenantContext rolls back if the membership is missing).
- * The org_owner role assignment is added by the Access module (increment 4).
+ * OrganizationLifecycle hooks (Access) run in the same transaction: they
+ * install the role templates and grant org_owner to the creator.
  */
 final class CreateOrganization
 {
+    /**
+     * @param  iterable<OrganizationLifecycle>  $lifecycle
+     */
     public function __construct(
         private readonly TenantContext $tenant,
         private readonly DomainEventRecorder $events,
         private readonly DatabaseManager $db,
+        private readonly iterable $lifecycle = [],
     ) {}
 
     public function handle(Authenticatable $actor, string $name): OrganizationId
@@ -50,6 +56,10 @@ final class CreateOrganization
                  values (platform.current_organization_id(), ?) returning id::text as id',
                 [$userId]
             )->id;
+
+            foreach ($this->lifecycle as $hook) {
+                $hook->organizationCreated($organization, $membershipId);
+            }
 
             $this->events->record(
                 new DomainEvent('organization.created', 1, 'organization', $organization->value, [
