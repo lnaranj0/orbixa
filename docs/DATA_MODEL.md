@@ -19,7 +19,8 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 ## Cardinalidades y restricciones
 - user N:M organization mediante organization_memberships; N:M teams mediante team_members.
 - organization 1:N projects, teams, workflows, connections y agents.
-- team 1:N subteams, sin ciclos; team N:M project.
+- team 1:N subteams, sin ciclos ni más de 5 niveles (trigger `teams.enforce_hierarchy()` con advisory lock por organización); team N:M project mediante `portfolio.project_team_links` (enlace directo, sin herencia).
+- Miembros de equipo y proyecto, y enlaces, son filas temporales (`assigned/linked_*`, `removed/unlinked_*`) que conservan el historial; un cambio de rol cierra la fila y abre otra. Las inserciones toman `FOR SHARE` sobre el proyecto y el equipo destino, así un archivado concurrente espera (`2026_11_04_000700`).
 - project 1:N items; item 0..1 parent y N:N dependencies; profundidad configurable.
 - item N:M work actors usando assignment role (owner, implementer, reviewer, watcher). Owner humano puede ser único por item según regla.
 - project 1:N cycles; item 0..N cycles históricos vía cycle_items, con máximo un ciclo activo planificado por item cuando política lo exige.

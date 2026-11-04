@@ -28,6 +28,18 @@ Los eventos transportan IDs y metadatos mínimos, no credenciales ni texto sensi
 - `agent.registered`, `agent.assigned`, `agent.execution.reported`, `agent.execution.failed`.
 - `audit.sensitive_access.granted`, `notification.requested`.
 
+### Payloads de 02 (versión 1)
+| Evento | Agregado | Payload |
+| --- | --- | --- |
+| `team.created` | team | `parent_team_id` |
+| `team.moved` | team | ids del padre anterior y nuevo |
+| `team.member.assigned` / `team.member.removed` | team | `membership_id`, `role` (solo en assigned) |
+| `project.created` | project | `type`, `confidentiality` (el creador queda como manager sin evento aparte) |
+| `project.updated` | project | `fields` cambiados; `confidentiality {from, to}` si cambió. Nunca textos |
+| `project.member.added` / `project.member.removed` | project | `membership_id`, `role` (solo en added). Un cambio de rol emite removed + added |
+| `project.team.linked` / `project.team.unlinked` | project | `team_id` |
+| `audit.sensitive_access.granted` | project | `reason: organization_role`, `operation: view\|update`, `viewer_membership_id`. Uno por actor, proyecto y operación cada 10 minutos |
+
 ## Webhooks GitHub MVP
 `installation`, `installation_repositories`, `repository`, `pull_request`, `pull_request_review`, `push`; incluir `issues`/`issue_comment` solo si se habilita sincronización de issues. Firma HMAC SHA-256 sobre bytes originales, comparación temporalmente segura, secret rotatable. Delivery GUID + instalación + event/action: dedup y trazabilidad. Si verificación falla retornar 401; si el evento es válido pero no seleccionado, 2xx con estado ignored. Responder en menos de 10 segundos tras persistir inbox, sin procesamiento pesado síncrono.
 
