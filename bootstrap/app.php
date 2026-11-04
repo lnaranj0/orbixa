@@ -8,8 +8,13 @@ use Modules\Access\Contracts\AccessDenied;
 use Modules\IdentityTenancy\Contracts\MembershipChangeDenied;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
 use Modules\Platform\Presentation\Http\Middleware\AssignCorrelationId;
+use Modules\Teams\Contracts\HierarchyViolation;
+use Modules\Teams\Contracts\TeamMemberNotFound;
+use Modules\Teams\Contracts\TeamNotFound;
+use Modules\Teams\Contracts\TeamOperationDenied;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
+use Symfony\Component\HttpKernel\Exception\UnprocessableEntityHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -27,6 +32,10 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(TenantAccessDenied::class, fn (TenantAccessDenied $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(AccessDenied::class, fn (AccessDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(MembershipChangeDenied::class, fn (MembershipChangeDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(TeamOperationDenied::class, fn (TeamOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(TeamNotFound::class, fn (TeamNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(TeamMemberNotFound::class, fn (TeamMemberNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(HierarchyViolation::class, fn (HierarchyViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

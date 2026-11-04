@@ -11,6 +11,7 @@ use Modules\Access\Contracts\AccessDenied;
 use Modules\Access\Contracts\Authorizer;
 use Modules\Access\Contracts\LastOwnerRequired;
 use Modules\Access\Contracts\Permission;
+use Modules\Access\Infrastructure\AccessLifecycle;
 use Modules\IdentityTenancy\Application\CreateOrganization;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\IdentityTenancy\Infrastructure\Persistence\User;
@@ -172,7 +173,11 @@ final class AccessRolesTest extends SecurityTestCase
 
     private function accessLifecycle(): OrganizationLifecycle
     {
-        $hooks = iterator_to_array($this->app->tagged(OrganizationLifecycle::TAG));
+        // Several modules register lifecycle hooks; these tests target the Access one.
+        $hooks = array_values(array_filter(
+            iterator_to_array($this->app->tagged(OrganizationLifecycle::TAG)),
+            fn (OrganizationLifecycle $hook) => $hook instanceof AccessLifecycle,
+        ));
         $this->assertCount(1, $hooks);
 
         return $hooks[0];

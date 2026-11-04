@@ -10,6 +10,7 @@ use Modules\IdentityTenancy\Application\RevokeMembership;
 use Modules\IdentityTenancy\Contracts\CurrentMembership;
 use Modules\IdentityTenancy\Contracts\IdentityTenancyManifest;
 use Modules\IdentityTenancy\Contracts\MembershipDirectory;
+use Modules\IdentityTenancy\Contracts\MembershipLookup;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
 use Modules\IdentityTenancy\Contracts\RoleGrantGuard;
 use Modules\IdentityTenancy\Infrastructure\Invitations\DenyAllRoleGrantGuard;
@@ -17,6 +18,7 @@ use Modules\IdentityTenancy\Infrastructure\Invitations\PostgresAdmissionVerifier
 use Modules\IdentityTenancy\Infrastructure\Jobs\RunTenantAwareJobs;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresCurrentMembership;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresMembershipDirectory;
+use Modules\IdentityTenancy\Infrastructure\Membership\PostgresMembershipLookup;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresMembershipVerifier;
 use Modules\IdentityTenancy\Presentation\Console\CreateUserCommand;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
@@ -33,6 +35,7 @@ final class IdentityTenancyServiceProvider extends ServiceProvider
         $this->app->bind(MembershipVerifier::class, PostgresMembershipVerifier::class);
         $this->app->bind(MembershipDirectory::class, PostgresMembershipDirectory::class);
         $this->app->bind(CurrentMembership::class, PostgresCurrentMembership::class);
+        $this->app->bind(MembershipLookup::class, PostgresMembershipLookup::class);
         $this->app->when([CreateOrganization::class, AcceptInvitation::class, RevokeMembership::class])
             ->needs('$lifecycle')->giveTagged(OrganizationLifecycle::TAG);
 
