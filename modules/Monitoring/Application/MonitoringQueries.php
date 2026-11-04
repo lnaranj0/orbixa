@@ -61,7 +61,7 @@ final class MonitoringQueries
     {
         $this->audit->recordUse($actor, $scope->viewerMembershipId, $scope->auditedGrantIds);
 
-        return $this->work->flowMetrics($scope->selector, $from, $to);
+        return $this->work->flowMetrics($scope->metricsSelector(), $from, $to);
     }
 
     public function item(Authenticatable $actor, MonitoringScope $scope, string $itemId): MonitoredItem

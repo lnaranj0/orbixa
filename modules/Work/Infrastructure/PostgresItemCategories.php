@@ -3,7 +3,7 @@
 namespace Modules\Work\Infrastructure;
 
 use Illuminate\Database\DatabaseManager;
-use Modules\Work\Contracts\ItemCategories;
+use Modules\Work\Contracts\Planning\ItemCategories;
 
 final class PostgresItemCategories implements ItemCategories
 {

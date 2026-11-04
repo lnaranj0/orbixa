@@ -53,9 +53,10 @@ final class RejectedTransitionAudit
         $recent = $this->db->connection()->selectOne(
             "select 1 as found from events.domain_outbox
               where event_name = 'work.item.transition_rejected' and aggregate_id = ?::uuid
-                and actor_type = 'human' and actor_id = ? and occurred_at > now() - interval '".self::WINDOW."'
+                and actor_type = 'human' and actor_id = ? and payload->>'to_status_id' = ?
+                and occurred_at > now() - interval '".self::WINDOW."'
               limit 1",
-            [$itemId, $actorId]
+            [$itemId, $actorId, $toStatusId]
         );
         if ($recent !== null) {
             return;

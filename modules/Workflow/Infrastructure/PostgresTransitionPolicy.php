@@ -71,6 +71,16 @@ final class PostgresTransitionPolicy implements TransitionPolicy
         return $row === null ? null : self::toStatus($row);
     }
 
+    public function lockForEntry(string $projectId, string $statusId): ?WorkflowStatus
+    {
+        $row = $this->connection()->selectOne(
+            'select '.self::STATUS_COLUMNS.' from workflow.statuses s where s.project_id = ?::uuid and s.id = ?::uuid and s.archived_at is null for share',
+            [$projectId, $statusId]
+        );
+
+        return $row === null ? null : self::toStatus($row);
+    }
+
     public function statusForCategory(string $projectId, string $category): ?WorkflowStatus
     {
         $row = $this->connection()->selectOne(

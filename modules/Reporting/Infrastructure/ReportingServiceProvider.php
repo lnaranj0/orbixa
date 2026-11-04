@@ -16,5 +16,6 @@ final class ReportingServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadRoutesFrom(dirname(__DIR__).'/Presentation/routes.php');
+        $this->loadViewsFrom(dirname(__DIR__).'/Presentation/views', 'reporting');
     }
 }

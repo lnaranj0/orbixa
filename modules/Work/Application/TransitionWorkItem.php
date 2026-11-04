@@ -44,8 +44,9 @@ final class TransitionWorkItem
         $this->guard->requireChange($actor, $actorMembershipId, $item, $project, Permission::WorkTransition);
 
         $this->workflow->ensureWorkflow($project->id);
+        // No fallback to "a status of the same category": an item whose status
+        // is not active in the workflow only moves through its own edges.
         $from = ($item['workflow_status_id'] === null ? null : $this->workflow->status($project->id, $item['workflow_status_id']))
-            ?? $this->workflow->statusForCategory($project->id, $item['status'])
             ?? throw WorkRuleViolation::because(WorkRuleViolation::TRANSITION);
         $target = $this->target($project->id, $to) ?? throw WorkRuleViolation::because(WorkRuleViolation::TRANSITION);
 
@@ -70,6 +71,8 @@ final class TransitionWorkItem
         if ($rule->checkBlockers && $this->items->openBlockerCount($itemId) > 0) {
             throw WorkRuleViolation::because(WorkRuleViolation::BLOCKED);
         }
+        // Lock the destination against archiving and re-read its WIP limit.
+        $target = $this->workflow->lockForEntry($project->id, $target->id) ?? throw WorkRuleViolation::because(WorkRuleViolation::TRANSITION);
         if ($target->wipLimit !== null) {
             $this->items->lockStatus($target->id);
             if ($this->items->countInStatus($target->id) >= $target->wipLimit) {

@@ -75,8 +75,15 @@ final class ConfigureWorkflow
                 throw InputRejected::because('The project is archived.');
             }
         }
-        $this->policy->ensureWorkflow($project->id);
-        $workflow = $this->workflows->workflowOf($project->id) ?? throw WorkflowNotFound::make();
+        // Only changes create the default workflow; reads never write (review B8).
+        $workflow = $this->workflows->workflowOf($project->id);
+        if ($workflow === null) {
+            if (! $forChange) {
+                return ['project_id' => $project->id, 'workflow_id' => '', 'version' => 0];
+            }
+            $this->policy->ensureWorkflow($project->id);
+            $workflow = $this->workflows->workflowOf($project->id) ?? throw WorkflowNotFound::make();
+        }
 
         return ['project_id' => $project->id, 'workflow_id' => $workflow['id'], 'version' => $workflow['version']];
     }
@@ -115,6 +122,10 @@ final class ConfigureWorkflow
             $columns['position'] = self::position($changes['position']);
         }
         if (array_key_exists('wip_limit', $changes)) {
+            // New items enter the initial status without a transition: no WIP there (review M2).
+            if ($status['is_initial'] && $changes['wip_limit'] !== null) {
+                throw InputRejected::because('The initial status cannot have a WIP limit.');
+            }
             $columns['wip_limit'] = self::wip($changes['wip_limit']);
         }
         if ($columns === []) {
@@ -127,7 +138,8 @@ final class ConfigureWorkflow
     public function archiveStatus(Authenticatable $actor, string $projectId, int $expectedVersion, string $statusId): void
     {
         $workflow = $this->begin($actor, $projectId, $expectedVersion);
-        $status = $this->workflows->findStatus($workflow['workflow_id'], $statusId);
+        // FOR UPDATE: waits for in-flight moves into this status (they hold FOR SHARE).
+        $status = $this->workflows->findStatus($workflow['workflow_id'], $statusId, forUpdate: true);
         if ($status === null || $status['archived_at'] !== null) {
             throw WorkflowNotFound::make();
         }

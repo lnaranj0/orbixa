@@ -31,8 +31,8 @@ final class WorkflowApiController
             return [
                 'id' => $workflow['workflow_id'],
                 'version' => $workflow['version'],
-                'statuses' => $store->statuses($workflow['workflow_id']),
-                'transitions' => $store->transitions($workflow['workflow_id']),
+                'statuses' => $workflow['workflow_id'] === '' ? [] : $store->statuses($workflow['workflow_id']),
+                'transitions' => $workflow['workflow_id'] === '' ? [] : $store->transitions($workflow['workflow_id']),
             ];
         })]);
     }

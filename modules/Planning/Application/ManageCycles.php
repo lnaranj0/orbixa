@@ -20,7 +20,7 @@ use Modules\Platform\Contracts\Tenancy\TenantContextRequired;
 use Modules\Platform\Contracts\Validation\InputRejected;
 use Modules\Portfolio\Contracts\ProjectDirectory;
 use Modules\Portfolio\Contracts\ProjectReference;
-use Modules\Work\Contracts\ItemCategories;
+use Modules\Work\Contracts\Planning\ItemCategories;
 
 /**
  * Optional cycles (05 D-B, D-D, P9). Reading needs a visible project;
@@ -57,11 +57,26 @@ final class ManageCycles
     /**
      * @return array{0: CycleRow, 1: ProjectReference}
      */
-    public function cycle(Authenticatable $actor, string $cycleId, bool $forUpdate = false): array
+    public function cycle(Authenticatable $actor, string $cycleId): array
     {
-        $cycle = $this->cycles->find($cycleId, $forUpdate) ?? throw CycleNotFound::make();
+        $cycle = $this->cycles->find($cycleId) ?? throw CycleNotFound::make();
 
         return [$cycle, $this->project($actor, $cycle['project_id'])];
+    }
+
+    /**
+     * Authorizes first, then locks: nobody without planning.manage can hold
+     * the cycle row (review B12).
+     *
+     * @return array{0: CycleRow, 1: ProjectReference, 2: string} cycle, project, actor membership
+     */
+    private function cycleForChange(Authenticatable $actor, string $cycleId): array
+    {
+        [, $project] = $this->cycle($actor, $cycleId);
+        $by = $this->requireManage($actor, $project);
+        $cycle = $this->cycles->find($cycleId, forUpdate: true) ?? throw CycleNotFound::make();
+
+        return [$cycle, $project, $by];
     }
 
     public function setMode(Authenticatable $actor, string $projectId, string $mode): void
@@ -107,8 +122,7 @@ final class ManageCycles
 
     public function start(Authenticatable $actor, string $cycleId): void
     {
-        [$cycle, $project] = $this->cycle($actor, $cycleId, forUpdate: true);
-        $this->requireManage($actor, $project);
+        [$cycle, $project] = $this->cycleForChange($actor, $cycleId);
         if ($cycle['status'] !== 'planned') {
             throw PlanningRuleViolation::because(PlanningRuleViolation::STATE);
         }
@@ -150,8 +164,7 @@ final class ManageCycles
      */
     public function close(Authenticatable $actor, string $cycleId, ?string $carryTo = null): array
     {
-        [$cycle, $project] = $this->cycle($actor, $cycleId, forUpdate: true);
-        $by = $this->requireManage($actor, $project);
+        [$cycle, $project, $by] = $this->cycleForChange($actor, $cycleId);
         if ($cycle['status'] === 'closed') {
             throw PlanningRuleViolation::because(PlanningRuleViolation::CLOSED);
         }
@@ -172,6 +185,7 @@ final class ManageCycles
             $counts[$outcome]++;
             if ($outcome === 'spilled' && $next !== null && ($categories[$membership['item_id']] ?? null) !== 'canceled') {
                 $this->cycles->addItem($project->id, $next['id'], $membership['item_id'], $membership['committed'], $cycleId, $by);
+                $this->event($actor, 'planning.cycle.item_added', $next['id'], ['project_id' => $project->id, 'item_id' => $membership['item_id'], 'carried_from_cycle_id' => $cycleId]);
             }
         }
         $this->cycles->setStatus($cycleId, 'closed');

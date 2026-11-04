@@ -18,6 +18,14 @@ interface TransitionPolicy
     /** An active (not archived) status of the project, or null. */
     public function status(string $projectId, string $statusId): ?WorkflowStatus;
 
+    /**
+     * Locks an active status FOR SHARE until commit and returns it re-read
+     * (current WIP limit), or null when archived or unknown. Archiving takes
+     * FOR UPDATE on the same row, so a move into a status cannot race its
+     * archiving (05 review M1, M2).
+     */
+    public function lockForEntry(string $projectId, string $statusId): ?WorkflowStatus;
+
     /** First active status of the category by position, or null. */
     public function statusForCategory(string $projectId, string $category): ?WorkflowStatus;
 

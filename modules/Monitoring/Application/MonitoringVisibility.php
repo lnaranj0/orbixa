@@ -47,10 +47,13 @@ final class MonitoringVisibility
         $everything = [...$catalog['standard'], ...$catalog['restricted']];
 
         if ($this->allows($actor, Permission::ProjectsManage)) {
-            return new MonitoringScope($viewer, ItemSelector::nothing()->with(ItemSelector::ALL, $everything), true, [], [], [], true);
+            $all = ItemSelector::nothing()->with(ItemSelector::ALL, $everything);
+
+            return new MonitoringScope($viewer, $all, true, [], [], [], true, $all);
         }
 
         $selector = ItemSelector::nothing();
+        $metrics = ItemSelector::nothing();
         $organizationWide = false;
         $members = [];
         $teams = [];
@@ -60,6 +63,7 @@ final class MonitoringVisibility
 
             if ($grant['scope_type'] === 'organization') {
                 $selector = $selector->with(ItemSelector::ALL, $projects);
+                $metrics = $metrics->with(ItemSelector::ALL, $projects);
                 $organizationWide = true;
             } elseif ($grant['scope_type'] === 'user') {
                 $target = (string) $grant['target_membership_id'];
@@ -71,6 +75,7 @@ final class MonitoringVisibility
             } else {
                 $teamIds = $this->activeTeams((string) $grant['target_team_id'], $grant['include_descendants']);
                 $selector = $selector->with(ItemSelector::TEAMS, $projects, $teamIds);
+                $metrics = $metrics->with(ItemSelector::TEAMS, $projects, $teamIds);
                 array_push($teams, ...$teamIds);
             }
 
@@ -81,7 +86,7 @@ final class MonitoringVisibility
 
         return new MonitoringScope(
             $viewer, $selector, $organizationWide,
-            array_values(array_unique($members)), array_values(array_unique($teams)), $audited, false,
+            array_values(array_unique($members)), array_values(array_unique($teams)), $audited, false, $metrics,
         );
     }
 

@@ -23,6 +23,8 @@ final class FlowMetricsCalculator
      */
     public function compute(string $predicate, array $bindings, string $from, string $to): array
     {
+        // Bounded cost per request (review B7); local to the request transaction.
+        $this->db->connection()->statement("set local statement_timeout = '5s'");
         $row = (array) $this->db->connection()->selectOne(
             "with scope as (
                  select i.id, i.created_at, i.status from work.items i where {$predicate}

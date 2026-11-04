@@ -22,6 +22,7 @@
                     <a href="{{ route('projects.index', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Proyectos</a>
                     <a href="{{ route('work.mine', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Mi trabajo</a>
                     <a href="{{ route('monitoring.panel', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Monitoreo</a>
+                    <a href="{{ route('reports.flow', ['organization' => $organizationId]) }}" class="block rounded-md px-3 py-2 hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Métricas</a>
                 @endisset
                 <form method="POST" action="{{ route('logout') }}" class="pt-2">
                     @csrf

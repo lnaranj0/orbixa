@@ -54,14 +54,14 @@ final class WorkflowStore
     /**
      * @return StatusRow|null
      */
-    public function findStatus(string $workflowId, string $statusId): ?array
+    public function findStatus(string $workflowId, string $statusId, bool $forUpdate = false): ?array
     {
         if (! self::isUuid($statusId)) {
             return null;
         }
         $row = $this->connection()->selectOne(
             'select id::text as id, name, category, position, is_initial, wip_limit, archived_at::text as archived_at
-               from workflow.statuses where workflow_id = ?::uuid and id = ?::uuid',
+               from workflow.statuses where workflow_id = ?::uuid and id = ?::uuid'.($forUpdate ? ' for update' : ''),
             [$workflowId, $statusId]
         );
 

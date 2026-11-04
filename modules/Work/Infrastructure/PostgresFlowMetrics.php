@@ -3,6 +3,7 @@
 namespace Modules\Work\Infrastructure;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Modules\Portfolio\Contracts\ProjectDirectory;
 use Modules\Portfolio\Contracts\ProjectVisibility;
 use Modules\Work\Contracts\FlowMetrics;
 use Modules\Work\Contracts\WorkItemNotFound;
@@ -12,6 +13,7 @@ final class PostgresFlowMetrics implements FlowMetrics
     public function __construct(
         private readonly ProjectVisibility $visibility,
         private readonly FlowMetricsCalculator $calculator,
+        private readonly ProjectDirectory $projects,
     ) {}
 
     public function forActor(Authenticatable $actor, ?string $projectId, string $from, string $to): array
@@ -20,6 +22,7 @@ final class PostgresFlowMetrics implements FlowMetrics
             if (! $this->visibility->canView($actor, $projectId)) {
                 throw WorkItemNotFound::make();
             }
+            $this->projects->recordSensitiveAccess($actor, $projectId, 'metrics.view');
 
             return $this->calculator->compute('i.project_id = ?::uuid', [$projectId], $from, $to);
         }

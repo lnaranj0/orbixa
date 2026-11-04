@@ -99,6 +99,13 @@ deptrac:
               value: '^Modules\\Work\\Contracts\\Monitoring\\'
             - type: classLike
               value: '^Modules\\Work\\Contracts\\Workflow\\'
+            - type: classLike
+              value: '^Modules\\Work\\Contracts\\Planning\\'
+    # 05 review B5: actor-less category lookup, only for Planning.
+    - name: WorkPlanningContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Work\\Contracts\\Planning\\'
     # 05 P2: the transition port; only Work (consumer) and Workflow (implementation).
     - name: WorkWorkflowContracts
       collectors:
@@ -239,11 +246,13 @@ deptrac:
       - PortfolioContracts
     WorkMonitoringContracts: ~
     WorkWorkflowContracts: ~
+    WorkPlanningContracts: ~
     PortfolioCatalogContracts: ~
     WorkInternals:
       - WorkContracts
       - WorkMonitoringContracts
       - WorkWorkflowContracts
+      - WorkPlanningContracts
       - PortfolioContracts
       - TeamsContracts
       - IdentityTenancyContracts
@@ -275,6 +284,7 @@ deptrac:
       - PlatformContracts
     PlanningInternals:
       - PlanningContracts
+      - WorkPlanningContracts
       - WorkContracts
       - PortfolioContracts
       - IdentityTenancyContracts

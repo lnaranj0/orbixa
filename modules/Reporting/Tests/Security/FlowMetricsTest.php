@@ -94,7 +94,8 @@ final class FlowMetricsTest extends SecurityTestCase
         $observed = $this->member('developer');
         $withGrant = $this->member('viewer');
         $withoutGrant = $this->member('viewer');
-        $this->as($this->owner, function () use ($observed, $withGrant) {
+        $orgViewer = $this->member('viewer');
+        $this->as($this->owner, function () use ($observed, $withGrant, $orgViewer) {
             $project = $this->app->make(CreateProject::class)->handle($this->owner, 'MON', 'Monitored');
             $this->app->make(AddProjectMember::class)->handle($this->owner, $project, $this->membershipId($observed));
             $mine = $this->app->make(CreateWorkItem::class)->handle($this->owner, $project, ['type' => 'task', 'title' => 'Observed']);
@@ -107,10 +108,16 @@ final class FlowMetricsTest extends SecurityTestCase
                 'target_membership_id' => $this->membershipId($observed), 'reason' => 'Follow-up',
                 'expires_at' => (new \DateTimeImmutable('+30 days'))->format(DATE_ATOM),
             ]);
+            $this->app->make(IssueGrant::class)->handle($this->owner, [
+                'viewer_membership_id' => $this->membershipId($orgViewer), 'scope_type' => 'organization',
+                'reason' => 'Follow-up', 'expires_at' => (new \DateTimeImmutable('+30 days'))->format(DATE_ATOM),
+            ]);
         });
         $url = "/api/v1/organizations/{$this->organization->value}/monitoring/metrics";
 
-        $this->actingAs($withGrant)->getJson($url)->assertOk()->assertJsonPath('data.throughput', 1);
+        // 05 review M3: a user grant is a one-person scope, so it never yields flow metrics.
+        $this->actingAs($withGrant)->getJson($url)->assertOk()->assertJsonPath('data.throughput', 0);
+        $this->actingAs($orgViewer)->getJson($url)->assertOk()->assertJsonPath('data.throughput', 2);
         $empty = $this->actingAs($withoutGrant)->getJson($url)->assertOk();
         $this->assertSame(0, $empty->json('data.throughput'));
         $this->assertNull($empty->json('data.lead_time_days.median'), 'Empty scope: no figures, never organization totals.');

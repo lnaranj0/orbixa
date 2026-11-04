@@ -15,7 +15,7 @@ Decisiones D-A…D-G y P1–P11 aprobadas el 2026-11-04. Las propusieron los age
 - **D-D · Modo.** `continuous|sprint|hybrid` se guarda en `planning.project_settings`, no en el workflow.
 - **D-E · Reporting.** Módulo sin tablas: calcula métricas a partir de contratos de Work.
 - **D-F · WIP.** Límite duro: la transición que lo excede se rechaza con 422, sin revelar contadores.
-- **D-G · Métricas por persona.** Ninguna en 05: solo por proyecto, equipo o alcance de monitoreo.
+- **D-G · Métricas por persona.** Ninguna en 05: solo por proyecto, equipo o alcance de monitoreo. Los grants de monitoreo de tipo `user` no aportan a las métricas (revisión M3): un visor con solo esos grants ve los items de la persona, pero no sus métricas de flujo.
 
 ## Módulos (P1)
 - **Workflow** (`workflow.*`): `workflows` (uno por proyecto), `statuses`, `transitions`.
@@ -99,6 +99,20 @@ Decisiones D-A…D-G y P1–P11 aprobadas el 2026-11-04. Las propusieron los age
 - El backfill del historial depende de los eventos `created` y `transitioned` de 03; si alguno faltara, el lead time de esos items se calcula desde `created_at`.
 - La FK que cruza Work → Workflow fija el orden de las migraciones.
 - Revisar retención y confidencialidad antes de exportar métricas.
+
+## Revisión de seguridad (aplicada)
+- **M1:** archivar un estado toma `FOR UPDATE` sobre él y cada movimiento hacia un estado toma `FOR SHARE`, así que no se cruzan. Un item ya no hereda las transiciones de otro estado de la misma categoría.
+- **M2:** el límite WIP se vuelve a leer después del bloqueo, y el estado inicial no admite límite WIP.
+- **M3:** los grants `user` no aportan a las métricas (D-G).
+- **M4:** solo los roles de trabajo pueden ser `project.manager`.
+- **B5:** `ItemCategories` vive en la capa `WorkPlanningContracts`, que solo Planning usa.
+- **B6:** FK del historial hacia los estados (`2026_11_07_000800`).
+- **B7:** las métricas tienen `statement_timeout` de 5 s.
+- **B8:** las lecturas no crean workflows y los GET llevan throttle.
+- **B9:** las métricas de proyectos `restricted` quedan auditadas.
+- **B10:** la deduplicación de rechazos tiene en cuenta el estado destino.
+- **B12:** los ciclos se autorizan antes de bloquearse, y el arrastre emite `item_added`.
+- **B11 no aplica:** las dependencias nunca cruzan proyectos.
 
 ## Verificación de salida
 Proyectos con flujo continuo funcionan sin sprint; transiciones ilegales fallan y métricas no filtran otros alcances.
