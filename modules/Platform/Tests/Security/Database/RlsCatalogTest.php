@@ -36,6 +36,24 @@ final class RlsCatalogTest extends SecurityTestCase
             'relay_read' => ['SELECT', 'orbixa_relay', 'true', null],
             'relay_mark_published' => ['UPDATE', 'orbixa_relay', '(published_atISNULL)', 'true'],
         ],
+        // 01, option A: the NOLOGIN owner of the membership functions.
+        'identity.organizations' => [
+            'membership_reader_read' => ['SELECT', 'orbixa_membership_reader', 'true', null],
+        ],
+        'identity.organization_memberships' => [
+            'membership_reader_read' => ['SELECT', 'orbixa_membership_reader', 'true', null],
+        ],
+    ];
+
+    /**
+     * The only SECURITY DEFINER functions allowed (01, option A), with their
+     * exact owner and pinned search_path.
+     *
+     * @var array<string, array{string, string}>
+     */
+    private const REVIEWED_SECURITY_DEFINER_FUNCTIONS = [
+        'identity.has_active_membership(uuid,uuid)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
+        'identity.organizations_for_user(uuid)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
     ];
 
     public function test_every_tenant_table_follows_the_rls_template(): void
@@ -157,16 +175,29 @@ final class RlsCatalogTest extends SecurityTestCase
         $this->assertSame([], $foreign);
     }
 
-    public function test_no_security_definer_functions_in_application_schemas(): void
+    public function test_only_reviewed_security_definer_functions_exist(): void
     {
         $definers = DB::select(<<<'SQL'
-            select p.oid::regprocedure::text as signature
+            select p.oid::regprocedure::text as signature, pg_get_userbyid(p.proowner) as owner,
+                   p.proconfig::text as config, has_function_privilege('public', p.oid, 'EXECUTE') as public_execute
               from pg_proc p join pg_namespace n on n.oid = p.pronamespace
              where p.prosecdef
                and n.nspname not in ('pg_catalog', 'information_schema')
+             order by 1
             SQL);
 
-        $this->assertSame([], $definers);
+        $this->assertEqualsCanonicalizing(
+            array_keys(self::REVIEWED_SECURITY_DEFINER_FUNCTIONS),
+            array_column($definers, 'signature'),
+            'Unreviewed SECURITY DEFINER function present (or a reviewed one is missing).'
+        );
+
+        foreach ($definers as $function) {
+            [$owner, $config] = self::REVIEWED_SECURITY_DEFINER_FUNCTIONS[$function->signature];
+            $this->assertSame($owner, $function->owner, "{$function->signature} owner");
+            $this->assertSame($config, $function->config, "{$function->signature} must pin search_path");
+            $this->assertFalse($function->public_execute, "{$function->signature} must not be executable by PUBLIC");
+        }
     }
 
     public function test_views_use_security_invoker(): void

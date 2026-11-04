@@ -36,6 +36,9 @@ return [
 
     'relay_connection' => 'pgsql_relay',
 
+    // NOLOGIN owner of the narrow membership functions (01, option A).
+    'membership_reader_role' => env('DB_MEMBERSHIP_READER_ROLE', 'orbixa_membership_reader'),
+
     'allow_destructive_commands' => (bool) env('DB_ALLOW_DESTRUCTIVE_COMMANDS', false),
 
     'ephemeral_test_database' => [
