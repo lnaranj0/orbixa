@@ -1,0 +1,19 @@
+<?php
+
+use Illuminate\Support\Facades\Route;
+use Modules\IdentityTenancy\Contracts\ActiveOrganization;
+use Modules\Teams\Presentation\Http\Controllers\TeamApiController;
+
+// D10: session + CSRF ("web"), active organization re-verified per request.
+Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
+    ->prefix('/api/v1/organizations/{organization}')
+    ->name('api.teams.')
+    ->group(function () {
+        Route::get('/teams', [TeamApiController::class, 'index'])->name('index');
+        Route::post('/teams', [TeamApiController::class, 'store'])->name('store');
+        Route::get('/teams/{team}', [TeamApiController::class, 'show'])->name('show');
+        Route::post('/teams/{team}/move', [TeamApiController::class, 'move'])->name('move');
+        Route::post('/teams/{team}/archive', [TeamApiController::class, 'archive'])->name('archive');
+        Route::post('/teams/{team}/members', [TeamApiController::class, 'addMember'])->name('members.store');
+        Route::delete('/teams/{team}/members/{membership}', [TeamApiController::class, 'removeMember'])->name('members.destroy');
+    });

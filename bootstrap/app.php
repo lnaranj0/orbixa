@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use Modules\Access\Contracts\AccessDenied;
 use Modules\IdentityTenancy\Contracts\MembershipChangeDenied;
 use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
+use Modules\Platform\Contracts\Http\InvalidCursor;
+use Modules\Platform\Contracts\Idempotency\IdempotencyConflict;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
 use Modules\Platform\Presentation\Http\Middleware\AssignCorrelationId;
 use Modules\Portfolio\Contracts\ProjectKeyUnavailable;
@@ -39,6 +41,8 @@ return Application::configure(basePath: dirname(__DIR__))
         // from a missing resource (404); a resource of the active
         // organization without permission is 403.
         $exceptions->map(TenantAccessDenied::class, fn (TenantAccessDenied $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(InvalidCursor::class, fn (InvalidCursor $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
+        $exceptions->map(IdempotencyConflict::class, fn (IdempotencyConflict $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
         $exceptions->map(AccessDenied::class, fn (AccessDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(MembershipChangeDenied::class, fn (MembershipChangeDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(MembershipReferenceInvalid::class, fn (MembershipReferenceInvalid $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));

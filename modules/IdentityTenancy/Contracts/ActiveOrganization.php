@@ -13,5 +13,8 @@ final readonly class ActiveOrganization
 {
     public const SESSION_KEY = 'orbixa.active_organization_id';
 
+    /** Route middleware alias that resolves it; other modules use the alias, not the class. */
+    public const MIDDLEWARE = 'organization';
+
     public function __construct(public OrganizationId $id) {}
 }

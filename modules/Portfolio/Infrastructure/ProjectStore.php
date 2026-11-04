@@ -16,7 +16,7 @@ use Modules\Portfolio\Contracts\ProjectSummary;
  */
 final class ProjectStore
 {
-    private const COLUMNS = 'id::text as id, key, name, type, status, confidentiality, lock_version';
+    private const COLUMNS = 'id::text as id, key, name, type, status, confidentiality, lock_version, description';
 
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 
@@ -42,6 +42,43 @@ final class ProjectStore
         $rows = $ids === null
             ? $this->connection()->select('select '.self::COLUMNS.' from portfolio.projects order by key')
             : $this->connection()->select('select '.self::COLUMNS.' from portfolio.projects where id = any(?::uuid[]) order by key', [self::pgArray($ids)]);
+
+        return array_values(array_map(fn (object $row) => self::summary($row), $rows));
+    }
+
+    /**
+     * Keyset page ordered by (key, id). Visibility ($ids, null = all) and the
+     * allowlisted filters are applied on every page, never taken from the cursor.
+     *
+     * @param  list<string>|null  $ids
+     * @param  array{status?: string, type?: string, confidentiality?: string}  $filters
+     * @param  list<string>|null  $after  [key, id] of the last row of the previous page
+     * @return list<ProjectSummary>
+     */
+    public function page(?array $ids, array $filters, ?array $after, int $limit): array
+    {
+        $where = ['true'];
+        $bindings = [];
+        if ($ids !== null) {
+            $where[] = 'id = any(?::uuid[])';
+            $bindings[] = self::pgArray($ids);
+        }
+        foreach (['status', 'type', 'confidentiality'] as $column) {
+            if (isset($filters[$column])) {
+                $where[] = "{$column} = ?";
+                $bindings[] = $filters[$column];
+            }
+        }
+        if ($after !== null) {
+            $where[] = '(key, id) > (?, ?::uuid)';
+            array_push($bindings, $after[0], $after[1]);
+        }
+        $bindings[] = $limit;
+
+        $rows = $this->connection()->select(
+            'select '.self::COLUMNS.' from portfolio.projects where '.implode(' and ', $where).' order by key, id limit ?',
+            $bindings
+        );
 
         return array_values(array_map(fn (object $row) => self::summary($row), $rows));
     }
@@ -217,6 +254,7 @@ final class ProjectStore
         return new ProjectSummary(
             (string) $c['id'], (string) $c['key'], (string) $c['name'], (string) $c['type'],
             (string) $c['status'], (string) $c['confidentiality'], (int) $c['lock_version'],
+            $c['description'] === null ? null : (string) $c['description'],
         );
     }
 

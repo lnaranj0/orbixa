@@ -12,5 +12,6 @@ final readonly class ProjectSummary
         public string $status,
         public string $confidentiality,
         public int $version,
+        public ?string $description = null,
     ) {}
 }

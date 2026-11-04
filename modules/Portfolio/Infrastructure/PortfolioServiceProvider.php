@@ -2,6 +2,9 @@
 
 namespace Modules\Portfolio\Infrastructure;
 
+use Illuminate\Cache\RateLimiting\Limit;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Modules\Access\Contracts\ScopedRoleProvider;
 use Modules\IdentityTenancy\Contracts\OrganizationLifecycle;
@@ -24,5 +27,9 @@ final class PortfolioServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(dirname(__DIR__).'/Database/Migrations');
+        $this->loadRoutesFrom(dirname(__DIR__).'/Presentation/routes.php');
+
+        // D11: project creation is throttled per user (key enumeration).
+        RateLimiter::for('projects.create', fn (Request $request) => Limit::perMinute(10)->by('user:'.$request->user()?->getAuthIdentifier()));
     }
 }

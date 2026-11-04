@@ -145,6 +145,68 @@ final class TeamStore
     }
 
     /**
+     * @return list<string> active teams where the membership is an active lead
+     */
+    public function ledTeamIdsOf(string $membershipId): array
+    {
+        return $this->ids(
+            "select tm.team_id::text as id from teams.team_members tm join teams.teams t on t.id = tm.team_id
+              where tm.membership_id = ?::uuid and tm.removed_at is null and tm.role = 'lead' and t.status = 'active' order by 1",
+            [$membershipId]
+        );
+    }
+
+    /**
+     * Keyset page ordered by (name, id); visibility ($ids, null = all) and
+     * filters are applied on every page.
+     *
+     * @param  list<string>|null  $ids
+     * @param  array{status?: string, parent_team_id?: string}  $filters
+     * @param  list<string>|null  $after  [name, id] of the last row of the previous page
+     * @return list<array{id: string, name: string, parent_team_id: string|null, status: string, version: int}>
+     */
+    public function page(?array $ids, array $filters, ?array $after, int $limit): array
+    {
+        $where = ['true'];
+        $bindings = [];
+        if ($ids !== null) {
+            $where[] = 'id = any(?::uuid[])';
+            $bindings[] = '{'.implode(',', array_filter($ids, fn (string $id) => self::isUuid($id))).'}';
+        }
+        if (isset($filters['status'])) {
+            $where[] = 'status = ?';
+            $bindings[] = $filters['status'];
+        }
+        if (isset($filters['parent_team_id'])) {
+            $where[] = 'parent_team_id = ?::uuid';
+            $bindings[] = $filters['parent_team_id'];
+        }
+        if ($after !== null) {
+            $where[] = '(name, id) > (?, ?::uuid)';
+            array_push($bindings, $after[0], $after[1]);
+        }
+        $bindings[] = $limit;
+
+        $rows = $this->connection()->select(
+            'select id::text as id, name, parent_team_id::text as parent_team_id, status, lock_version
+               from teams.teams where '.implode(' and ', $where).' order by name, id limit ?',
+            $bindings
+        );
+
+        return array_values(array_map(function (object $row): array {
+            $c = (array) $row;
+
+            return [
+                'id' => (string) $c['id'],
+                'name' => (string) $c['name'],
+                'parent_team_id' => $c['parent_team_id'] === null ? null : (string) $c['parent_team_id'],
+                'status' => (string) $c['status'],
+                'version' => (int) $c['lock_version'],
+            ];
+        }, $rows));
+    }
+
+    /**
      * @return list<string>
      */
     public function descendantsOf(string $teamId): array
