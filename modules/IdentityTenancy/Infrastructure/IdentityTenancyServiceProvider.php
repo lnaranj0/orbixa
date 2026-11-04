@@ -16,6 +16,7 @@ use Modules\IdentityTenancy\Infrastructure\Invitations\PostgresAdmissionVerifier
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresCurrentMembership;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresMembershipDirectory;
 use Modules\IdentityTenancy\Infrastructure\Membership\PostgresMembershipVerifier;
+use Modules\IdentityTenancy\Presentation\Console\CreateUserCommand;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
 use Modules\Platform\Contracts\Tenancy\AdmissionVerifier;
 use Modules\Platform\Contracts\Tenancy\MembershipVerifier;
@@ -41,5 +42,11 @@ final class IdentityTenancyServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(dirname(__DIR__).'/Database/Migrations');
+        $this->loadRoutesFrom(dirname(__DIR__).'/Presentation/routes.php');
+        $this->loadViewsFrom(dirname(__DIR__).'/Presentation/views', 'identity');
+
+        if ($this->app->runningInConsole()) {
+            $this->commands([CreateUserCommand::class]);
+        }
     }
 }

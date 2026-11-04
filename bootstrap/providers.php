@@ -1,6 +1,7 @@
 <?php
 
 use App\Providers\AppServiceProvider;
+use App\Providers\FortifyServiceProvider;
 use App\Providers\HorizonServiceProvider;
 use Modules\Access\Infrastructure\AccessServiceProvider;
 use Modules\Audit\Infrastructure\AuditServiceProvider;
@@ -11,6 +12,7 @@ use Modules\Platform\Infrastructure\PlatformServiceProvider;
 // of active modules stays reviewable.
 return [
     AppServiceProvider::class,
+    FortifyServiceProvider::class,
     HorizonServiceProvider::class,
     PlatformServiceProvider::class,
     AuditServiceProvider::class,

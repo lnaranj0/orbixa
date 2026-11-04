@@ -4,7 +4,12 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Modules\Access\Contracts\AccessDenied;
+use Modules\IdentityTenancy\Contracts\MembershipChangeDenied;
+use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
 use Modules\Platform\Presentation\Http\Middleware\AssignCorrelationId;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -16,6 +21,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(AssignCorrelationId::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
+        // D3: anything outside the user's organizations is indistinguishable
+        // from a missing resource (404); a resource of the active
+        // organization without permission is 403.
+        $exceptions->map(TenantAccessDenied::class, fn (TenantAccessDenied $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(AccessDenied::class, fn (AccessDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(MembershipChangeDenied::class, fn (MembershipChangeDenied $e) => new AccessDeniedHttpException(previous: $e));
+
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );

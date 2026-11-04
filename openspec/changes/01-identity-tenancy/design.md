@@ -49,6 +49,13 @@ Decisiones aprobadas el 2026-11-03 (opción A y D2–D10). Las propusieron los a
 - **Transacciones:** una por caso de uso (`runFor`), no por petición HTTP, para no retener transacciones durante el render.
 - **Revocación:** en 01 no hay caché de membresías ni permisos, así que la siguiente petición ya falla. Además se limpia la organización activa de la sesión.
 
+## Autenticación (decisión del 2026-11-03)
+- **Laravel Fortify** sin interfaz, con **login y logout** únicamente. El login está limitado a 5 intentos por minuto por email e IP. Registro, recuperación de contraseña, verificación de email, 2FA y passkeys quedan desactivados hasta decidirlos (por ejemplo, SSO o MFA).
+- No se ejecutó `fortify:install`, porque publicaría una migración sobre `users` en `public`.
+- Los usuarios locales se crean con `php artisan orbixa:user:create {email} --verified`. La contraseña se pide sin eco y nunca se registra.
+- **Enlace de invitación:** se muestra una vez en pantalla y no se envía por correo, porque el mailer de desarrollo es `log` y escribiría el token en los logs. Al abrir el enlace, el token pasa a la sesión cifrada y la URL se limpia con una redirección.
+- **Pantallas mínimas:** Blade + Tailwind, provisionales hasta `11-design-system`.
+
 ## Roles y permisos (D5, D7)
 - Plantillas por organización: `org_owner`, `org_admin`, `project_manager`, `team_lead`, `developer`, `reviewer`, `viewer`. Se copian al crear la organización, sin `db:seed`.
 - Solo se conceden las celdas "Sí" de `docs/PERMISSIONS.md`; las "Config." quedan sin conceder. `viewer`: cero permisos de dominio.
