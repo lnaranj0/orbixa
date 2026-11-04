@@ -1,0 +1,14 @@
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    # Greenfield: strict from the start, no baseline.
+    level: 8
+    paths:
+        - app
+        - modules
+        - config
+        - bootstrap/app.php
+        - bootstrap/providers.php
+    excludePaths:
+        - modules/*/Tests/*
