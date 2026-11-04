@@ -59,7 +59,7 @@
                 <span class="text-slate-500">{{ \Illuminate\Support\Carbon::parse($event['occurred_at'])->format('Y-m-d H:i') }}</span>
                 · {{ $event['type'] }}
                 @foreach ($event['changes'] as $field => $change)
-                    @if (is_array($change) && array_key_exists('to', $change) && ! is_array($change['to']))
+                    @if (is_array($change) && array_key_exists('to', $change) && is_scalar($change['to'] ?? '') && is_scalar($change['from'] ?? ''))
                         <span class="text-slate-600 dark:text-slate-300">· {{ $field }}: {{ $change['from'] ?? '—' }} → {{ $change['to'] ?? '—' }}</span>
                     @endif
                 @endforeach

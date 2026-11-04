@@ -6,6 +6,7 @@ use Illuminate\Database\Connection;
 use Illuminate\Database\DatabaseManager;
 use Illuminate\Database\QueryException;
 use Modules\Work\Contracts\WorkRuleViolation;
+use Modules\Work\Contracts\WorkVersionConflict;
 
 /**
  * Work-owned tables only, always inside the caller's tenant context (RLS
@@ -325,13 +326,32 @@ final class ItemStore
     /** Idempotent; false when the person already had an active row. */
     public function assign(string $itemId, string $membershipId, string $role, string $assignedByMembershipId): bool
     {
-        return $this->connection()->selectOne(
+        return $this->guarded(fn () => $this->connection()->selectOne(
             'insert into work.item_assignments (organization_id, item_id, membership_id, role, assigned_by_membership_id)
              values (platform.current_organization_id(), ?::uuid, ?::uuid, ?, ?::uuid)
              on conflict (organization_id, item_id, membership_id) where removed_at is null do nothing
              returning id',
             [$itemId, $membershipId, $role, $assignedByMembershipId]
-        ) !== null;
+        ) !== null);
+    }
+
+    /** Row lock on the item: serializes relation changes (labels, teams, assignees) per item. */
+    public function lockItem(string $itemId): void
+    {
+        $this->connection()->selectOne('select 1 from work.items where id = ?::uuid for update', [$itemId]);
+    }
+
+    public function labelCount(string $projectId): int
+    {
+        return (int) ((array) $this->connection()->selectOne('select count(*) as total from work.labels where project_id = ?::uuid', [$projectId]))['total'];
+    }
+
+    public function activeTeamLinkCount(string $itemId): int
+    {
+        return (int) ((array) $this->connection()->selectOne(
+            'select count(*) as total from work.item_team_links where item_id = ?::uuid and unlinked_at is null',
+            [$itemId]
+        ))['total'];
     }
 
     public function closeAssignment(string $itemId, string $membershipId, string $removedByMembershipId, string $reason): int
@@ -470,6 +490,7 @@ final class ItemStore
 
             throw match (true) {
                 $state === '23514' && str_contains($message, 'project must not be archived') => WorkRuleViolation::because(WorkRuleViolation::ARCHIVED),
+                $state === '23505' && str_contains($message, 'item_assignments_one_owner') => WorkVersionConflict::make(),
                 $state === '23514' && (str_contains($message, 'work hierarchy: cycle') || str_contains($message, 'items_not_own_parent')) => WorkRuleViolation::because(WorkRuleViolation::HIERARCHY_CYCLE),
                 $state === '23514' && str_contains($message, 'maximum depth exceeded') => WorkRuleViolation::because(WorkRuleViolation::DEPTH),
                 $state === '23514' && str_contains($message, 'incompatible parent type') => WorkRuleViolation::because(WorkRuleViolation::TYPE),
@@ -500,10 +521,11 @@ final class ItemStore
         return '{'.implode(',', array_filter($ids, fn (string $id) => self::isUuid($id))).'}';
     }
 
+    /** Listing columns: the description (up to 20 KB) is never read for lists. */
     private static function prefixed(): string
     {
         return 'i.id::text as id, i.project_id::text as project_id, i.number, i.key, i.type, i.parent_id::text as parent_id,
-            i.title, i.description, i.status, i.priority, i.estimate::text as estimate, i.due_on::text as due_on,
+            i.title, null::text as description, i.status, i.priority, i.estimate::text as estimate, i.due_on::text as due_on,
             i.completed_at::text as completed_at, i.created_at::text as created_at, i.updated_at::text as updated_at, i.lock_version';
     }
 

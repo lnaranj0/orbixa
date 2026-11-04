@@ -65,7 +65,7 @@ final class WorkPageController
 
     public function myWork(Request $request, ActiveOrganization $active, WorkQueries $queries): View
     {
-        $resource = 'my-work-page:'.$active->id->value;
+        $resource = 'my-work-page:'.$active->id->value.':'.$this->user($request)->getAuthIdentifier();
         $after = $this->after($request, $resource);
         $user = $this->user($request);
 
@@ -109,7 +109,7 @@ final class WorkPageController
     {
         $validated = $request->validate([
             'type' => ['required', 'string', 'in:'.implode(',', ItemRules::TYPES)],
-            'title' => ['required', 'string', 'max:200', 'regex:/^[^\x00]*$/u'],
+            'title' => ['required', 'string', 'max:200', 'regex:/^[^\p{Cc}\p{Cf}]*$/u'],
             'priority' => ['required', 'string', 'in:'.implode(',', ItemRules::PRIORITIES)],
         ]);
         $user = $this->user($request);
@@ -131,7 +131,7 @@ final class WorkPageController
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:0'],
             'to' => ['required', 'string', 'in:'.implode(',', ItemRules::STATUSES)],
-            'reason' => ['nullable', 'string', 'max:500', 'regex:/^[^\x00]*$/u'],
+            'reason' => ['nullable', 'string', 'max:500', 'regex:/^[^\p{Cc}\p{Cf}]*$/u'],
         ]);
         $user = $this->user($request);
         $itemId = (string) $request->route('item');

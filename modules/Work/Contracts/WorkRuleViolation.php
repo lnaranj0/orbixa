@@ -31,6 +31,10 @@ final class WorkRuleViolation extends RuntimeException
 
     public const TEAM = 'team cannot be linked';
 
+    public const TEAM_LIMIT = 'too many teams';
+
+    public const ASSIGNEE_LIMIT = 'too many assignees';
+
     public const DEPENDENCY = 'item cannot be linked';
 
     public const DEPENDENCY_CYCLE = 'dependency cycle';

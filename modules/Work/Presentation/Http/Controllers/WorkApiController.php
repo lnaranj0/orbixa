@@ -35,7 +35,11 @@ final class WorkApiController
 {
     private const IDEMPOTENCY_KEY = '/^[\x21-\x7E]{8,200}$/';
 
-    private const TEXT = 'regex:/^[^\x00]*$/u';
+    /** No control or format characters (bidi overrides, zero-width) in single-line text. */
+    private const TEXT = 'regex:/^[^\p{Cc}\p{Cf}]*$/u';
+
+    /** Multi-line text: also allows line breaks and tabs. */
+    private const MULTILINE = 'regex:/^(?:[^\p{Cc}\p{Cf}]|[\n\r\t])*$/u';
 
     public function __construct(
         private readonly TenantContext $tenant,
@@ -51,7 +55,7 @@ final class WorkApiController
 
     public function myWork(Request $request, ActiveOrganization $active, WorkQueries $queries): JsonResponse
     {
-        return $this->listing($request, $active, 'my-work', fn (array $filters, string $sort, ?array $after, int $limit) => $queries->myWork($this->user($request), $filters, $sort, $after, $limit), $queries);
+        return $this->listing($request, $active, 'my-work:'.$this->user($request)->getAuthIdentifier(), fn (array $filters, string $sort, ?array $after, int $limit) => $queries->myWork($this->user($request), $filters, $sort, $after, $limit), $queries);
     }
 
     public function store(Request $request, ActiveOrganization $active, CreateWorkItem $create, WorkQueries $queries, IdempotencyStore $idempotency): JsonResponse
@@ -59,7 +63,7 @@ final class WorkApiController
         $validated = $request->validate([
             'type' => ['required', 'string', 'in:'.implode(',', ItemRules::TYPES)],
             'title' => ['required', 'string', 'max:200', self::TEXT],
-            'description' => ['sometimes', 'nullable', 'string', 'max:20000', self::TEXT],
+            'description' => ['sometimes', 'nullable', 'string', 'max:20000', self::MULTILINE],
             'parent_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'priority' => ['sometimes', 'string', 'in:'.implode(',', ItemRules::PRIORITIES)],
             'estimate' => ['sometimes', 'nullable', 'numeric', 'between:0,9999.99'],
@@ -68,14 +72,19 @@ final class WorkApiController
         $user = $this->user($request);
         $projectId = (string) $request->route('project');
 
-        $body = $this->tenant->runFor($user, $active->id, fn () => $this->visibleOrNotFound($user, $queries, $this->idempotent($request, $idempotency, 'work.items.store:'.$projectId, $validated, function () use ($user, $create, $queries, $projectId, $validated) {
-            /** @var array{type: string, title: string, description?: string|null, parent_id?: string|null, priority?: string, estimate?: int|float|string|null, due_on?: string|null} $validated */
-            $itemId = $create->handle($user, $projectId, $validated);
+        // Only the id is stored for replays; the detail is rebuilt (and
+        // re-authorized, and audited) on every response.
+        $detail = $this->tenant->runFor($user, $active->id, function () use ($request, $idempotency, $user, $create, $queries, $projectId, $validated) {
+            $stored = $this->idempotent($request, $idempotency, 'work.items.store:'.$projectId, $validated, function () use ($user, $create, $projectId, $validated) {
+                /** @var array{type: string, title: string, description?: string|null, parent_id?: string|null, priority?: string, estimate?: int|float|string|null, due_on?: string|null} $validated */
+                return ['id' => $create->handle($user, $projectId, $validated)];
+            });
+            $itemId = $stored['id'] ?? null;
 
-            return ['data' => self::detail($queries->detail($user, $itemId))];
-        })));
+            return $queries->detail($user, is_string($itemId) ? $itemId : '');
+        });
 
-        return new JsonResponse($body, 201);
+        return new JsonResponse(['data' => self::detail($detail)], 201);
     }
 
     public function show(Request $request, ActiveOrganization $active, WorkQueries $queries): JsonResponse
@@ -106,7 +115,7 @@ final class WorkApiController
             'expected_version' => ['required', 'integer', 'min:0'],
             'type' => ['sometimes', 'string', 'in:'.implode(',', ItemRules::TYPES)],
             'title' => ['sometimes', 'string', 'max:200', self::TEXT],
-            'description' => ['sometimes', 'nullable', 'string', 'max:20000', self::TEXT],
+            'description' => ['sometimes', 'nullable', 'string', 'max:20000', self::MULTILINE],
             'parent_id' => ['sometimes', 'nullable', 'string', 'max:64'],
             'priority' => ['sometimes', 'string', 'in:'.implode(',', ItemRules::PRIORITIES)],
             'estimate' => ['sometimes', 'nullable', 'numeric', 'between:0,9999.99'],
@@ -339,22 +348,6 @@ final class WorkApiController
         }
 
         return [$position[0], $position[1]];
-    }
-
-    /**
-     * A replayed creation is only returned while the actor can still see it.
-     *
-     * @param  array<string, mixed>  $body
-     * @return array<string, mixed>
-     */
-    private function visibleOrNotFound(Authenticatable $actor, WorkQueries $queries, array $body): array
-    {
-        $data = $body['data'] ?? null;
-        if (! is_array($data) || ! is_string($data['key'] ?? null) || $queries->idForKey($actor, $data['key']) === null) {
-            throw WorkItemNotFound::make();
-        }
-
-        return $body;
     }
 
     /**

@@ -44,6 +44,24 @@ Todas las rutas cuelgan de `/api/v1/organizations/{organization}`: sesión + CSR
 - **Throttle general:** toda escritura usa `throttle:writes` (60/min por usuario).
 - **Listados de proyectos:** owner/admin que no son miembros directos ven los `restricted` sin `description`; el detalle completo queda auditado.
 
+## Trabajo (03, implementado)
+Mismas reglas que 02: sesión + CSRF, membresía verificada por petición, `throttle:writes` en escrituras, cursores firmados sin totales, 404 idéntico para lo no visible, 403 visible sin permiso, 422 genérico para referencias inválidas, 409 para versión obsoleta. Un item es visible si y solo si su proyecto lo es.
+
+| Método | Ruta | Notas |
+| --- | --- | --- |
+| GET | `/projects/{project}/items` | Backlog. `sort=number\|priority\|updated_at`; filtros `status`, `type`, `priority`, `label_id`, `parent_id`. Sin `description` |
+| POST | `/projects/{project}/items` | `{type, title, description?, parent_id?, priority?, estimate?, due_on?}`; `Idempotency-Key` opcional (repetición reautorizada) |
+| GET / POST | `/projects/{project}/labels` | Etiquetas del proyecto; crear exige `work.edit` sobre el proyecto |
+| GET | `/me/work` | Asignaciones activas del usuario en proyectos que aún ve |
+| GET | `/items/{item}` · `/items/by-key/{KEY-n}` | Detalle con etiquetas, asignaciones, equipos y dependencias. En `restricted` por rol de organización queda auditado (`work.view`) |
+| PATCH | `/items/{item}` | `{expected_version, type?, parent_id?, title?, description?, priority?, estimate?, due_on?}` |
+| POST | `/items/{item}/transitions` | `{expected_version, to, reason?}`; flujo base de `WORKFLOWS.md`; motivo obligatorio para cancelar, reabrir y restaurar |
+| GET | `/items/{item}/activity` | Actividad append-only paginada; la descripción solo como `{changed, length}` |
+| POST / DELETE | `/items/{item}/assignments[/{membership}]` | `{membership_id, role: owner\|collaborator}`; nadie se asigna a sí mismo; asignado sin acceso al proyecto: 422 |
+| POST / DELETE | `/items/{item}/labels[/{label}]` | Solo etiquetas del mismo proyecto; máximo 20 |
+| POST / DELETE | `/items/{item}/teams[/{team}]` | Equipo activo; no da visibilidad |
+| POST / DELETE | `/items/{item}/dependencies[/{blocker}]` | Mismo proyecto, sin ciclos, máximo 50 |
+
 ## Ejemplo transición
 ```json
 { "to_status_id":"uuid", "reason":"Aprobado QA", "expected_version":12 }

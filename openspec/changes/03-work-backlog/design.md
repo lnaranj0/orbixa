@@ -46,14 +46,14 @@ Decisiones W1–W14 aprobadas el 2026-11-04 (aprobación general del responsable
 
 ## Permisos (W6)
 - `work.create`: permiso de organización (owner, admin, project_manager, team_lead, developer) o `project.manager` del proyecto, sobre proyecto visible y no archivado.
-- `work.edit`, `work.transition`: organización (owner, admin, project_manager), `project.manager` del proyecto, líder de un equipo (o ancestro) asociado al item, o **asignado activo** del item (owner o colaborador).
+- `work.edit`, `work.transition`: organización (owner, admin, project_manager), `project.manager` del proyecto, líder de un equipo (o ancestro) asociado al item, o **asignado activo** del item (owner o colaborador). Los caminos de asignado y de líder solo valen para roles de trabajo (con `work.create` de organización): `viewer` y `reviewer` nunca editan, aunque los asignen o lideren un equipo (revisión de seguridad M1).
 - `work.assign`: organización (owner, admin, project_manager), `project.manager` del proyecto o líder de un equipo asociado al item. Nadie se asigna a sí mismo.
 - `reviewer` y `viewer` no editan en 03 (las guardas de revisión llegan con 05; los grants de visor con 04).
 - `ScopedRoleTemplates`: `project.manager` añade `work.create`, `work.edit`, `work.transition`, `work.assign`. Las plantillas de rol de organización no cambian.
 
 ## Asignaciones y equipos (W7)
 - Un único `owner` activo por item (índice único parcial) y colaboradores sin duplicados.
-- El asignado debe tener membresía activa (bloqueada `FOR SHARE`) **y** poder ver el proyecto; si no, el mismo 422 genérico que una membresía inexistente o ajena.
+- El asignado debe tener membresía activa (bloqueada `FOR SHARE`), un rol de trabajo (`work.create` de organización) **y** poder ver el proyecto; si no, el mismo 422 genérico que una membresía inexistente o ajena. Límites: 50 asignados y 20 equipos por item, 200 etiquetas por proyecto.
 - Equipos asociados: equipo activo de la organización (trigger `FOR SHARE`). La asociación **no** da visibilidad.
 - Revocar la membresía de organización cierra sus asignaciones activas (`OrganizationLifecycle`).
 

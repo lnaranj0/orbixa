@@ -40,6 +40,17 @@ Los eventos transportan IDs y metadatos mínimos, no credenciales ni texto sensi
 | `project.team.linked` / `project.team.unlinked` | project | `team_id` |
 | `audit.sensitive_access.granted` | project | `reason: organization_role`, `operation: view\|update`, `viewer_membership_id`. Uno por actor, proyecto y operación cada 10 minutos |
 
+### Payloads de 03 (versión 1)
+| Evento | Agregado | Payload |
+| --- | --- | --- |
+| `work.item.created` | work_item | `project_id`, `type`, `parent_id` |
+| `work.item.updated` | work_item | `project_id`, `fields` (incluye `labels`, `teams`, `assignments`, `dependencies`). Nunca título ni descripción |
+| `work.item.assigned` | work_item | `project_id`, `membership_id`, `role`, `replaced_owner_membership_id?` |
+| `work.item.transitioned` | work_item | `project_id`, `from`, `to`. El motivo queda solo en la actividad |
+| `work.item.completed` / `work.item.reopened` | work_item | `project_id` (`from` en reopened) |
+| `work.item.blocked` | work_item | `project_id`, `blocker_item_id` |
+| `audit.sensitive_access.granted` | project | `operation: work.view` para detalle o actividad de items de un proyecto `restricted` leídos por rol de organización |
+
 ## Webhooks GitHub MVP
 `installation`, `installation_repositories`, `repository`, `pull_request`, `pull_request_review`, `push`; incluir `issues`/`issue_comment` solo si se habilita sincronización de issues. Firma HMAC SHA-256 sobre bytes originales, comparación temporalmente segura, secret rotatable. Delivery GUID + instalación + event/action: dedup y trazabilidad. Si verificación falla retornar 401; si el evento es válido pero no seleccionado, 2xx con estado ignored. Responder en menos de 10 segundos tras persistir inbox, sin procesamiento pesado síncrono.
 

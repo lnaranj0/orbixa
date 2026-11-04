@@ -19,6 +19,8 @@ use Modules\Work\Infrastructure\ItemStore;
  */
 final class LinkItemTeam
 {
+    private const MAX_TEAMS = 20;
+
     public function __construct(
         private readonly WorkGuard $guard,
         private readonly ItemStore $items,
@@ -34,6 +36,10 @@ final class LinkItemTeam
 
         if (! ItemStore::isUuid($teamId) || ! $this->teams->isActive($teamId)) {
             throw WorkRuleViolation::because(WorkRuleViolation::TEAM);
+        }
+        $this->items->lockItem($itemId);
+        if ($this->items->activeTeamLinkCount($itemId) >= self::MAX_TEAMS) {
+            throw WorkRuleViolation::because(WorkRuleViolation::TEAM_LIMIT);
         }
         if ($this->items->linkTeam($itemId, $teamId, $actorMembershipId)) {
             $this->changed($actor, $actorMembershipId, $itemId, $project->id, ['linked' => $teamId]);

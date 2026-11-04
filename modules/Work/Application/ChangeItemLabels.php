@@ -34,6 +34,7 @@ final class ChangeItemLabels
         if (! ItemStore::isUuid($labelId)) {
             throw WorkRuleViolation::because(WorkRuleViolation::LABEL);
         }
+        $this->items->lockItem($itemId);
         if ($this->items->activeLabelCount($itemId) >= self::MAX_LABELS) {
             throw WorkRuleViolation::because(WorkRuleViolation::LABEL_LIMIT);
         }

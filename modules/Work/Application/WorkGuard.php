@@ -4,6 +4,7 @@ namespace Modules\Work\Application;
 
 use Illuminate\Contracts\Auth\Access\Gate;
 use Illuminate\Contracts\Auth\Authenticatable;
+use Modules\Access\Contracts\Authorizer;
 use Modules\Access\Contracts\Permission;
 use Modules\Access\Contracts\Scope;
 use Modules\IdentityTenancy\Contracts\CurrentMembership;
@@ -33,6 +34,7 @@ final class WorkGuard
         private readonly Gate $gate,
         private readonly ProjectDirectory $projects,
         private readonly ItemStore $items,
+        private readonly Authorizer $authorizer,
     ) {}
 
     /**
@@ -96,11 +98,15 @@ final class WorkGuard
         if ($this->allowsInProject($actor, $permission, $project->id)) {
             return;
         }
-        if ($permission !== Permission::WorkAssign && $this->items->isActiveAssignee($item['id'], $actorMembershipId)) {
-            return;
-        }
-        if ($this->leadsAnAssociatedTeam($actor, $item['id'])) {
-            return;
+        // The assignee and team-lead paths only extend working roles (those
+        // with organization-level work.create); viewers and reviewers never edit.
+        if ($this->authorizer->membershipHas($actorMembershipId, Permission::WorkCreate)) {
+            if ($permission !== Permission::WorkAssign && $this->items->isActiveAssignee($item['id'], $actorMembershipId)) {
+                return;
+            }
+            if ($this->leadsAnAssociatedTeam($actor, $item['id'])) {
+                return;
+            }
         }
 
         throw WorkOperationDenied::because("{$permission->value} is required.");
