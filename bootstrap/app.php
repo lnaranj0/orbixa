@@ -23,6 +23,11 @@ use Modules\Teams\Contracts\HierarchyViolation;
 use Modules\Teams\Contracts\TeamMemberNotFound;
 use Modules\Teams\Contracts\TeamNotFound;
 use Modules\Teams\Contracts\TeamOperationDenied;
+use Modules\Work\Contracts\WorkItemNotFound;
+use Modules\Work\Contracts\WorkOperationDenied;
+use Modules\Work\Contracts\WorkRelationNotFound;
+use Modules\Work\Contracts\WorkRuleViolation;
+use Modules\Work\Contracts\WorkVersionConflict;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\Exception\ConflictHttpException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
@@ -59,6 +64,12 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(ProjectLinkNotFound::class, fn (ProjectLinkNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(ProjectRuleViolation::class, fn (ProjectRuleViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
         $exceptions->map(ProjectVersionConflict::class, fn (ProjectVersionConflict $e) => new ConflictHttpException($e->getMessage(), $e));
+
+        $exceptions->map(WorkItemNotFound::class, fn (WorkItemNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(WorkRelationNotFound::class, fn (WorkRelationNotFound $e) => new NotFoundHttpException(previous: $e));
+        $exceptions->map(WorkOperationDenied::class, fn (WorkOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(WorkRuleViolation::class, fn (WorkRuleViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
+        $exceptions->map(WorkVersionConflict::class, fn (WorkVersionConflict $e) => new ConflictHttpException($e->getMessage(), $e));
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

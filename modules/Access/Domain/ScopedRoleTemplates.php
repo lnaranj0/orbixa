@@ -18,7 +18,11 @@ final class ScopedRoleTemplates
     {
         return [
             ScopedRoles::TEAM_LEAD => [Permission::TeamsManage],
-            ScopedRoles::PROJECT_MANAGER => [Permission::ProjectsManage],
+            // 03 (W6): the project manager also runs the project's work.
+            ScopedRoles::PROJECT_MANAGER => [
+                Permission::ProjectsManage, Permission::WorkCreate, Permission::WorkEdit,
+                Permission::WorkTransition, Permission::WorkAssign,
+            ],
         ];
     }
 

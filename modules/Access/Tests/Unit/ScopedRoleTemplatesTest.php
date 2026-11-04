@@ -16,6 +16,11 @@ final class ScopedRoleTemplatesTest extends TestCase
         $this->assertFalse(ScopedRoleTemplates::grants([ScopedRoles::TEAM_LEAD], Permission::ProjectsManage));
         $this->assertTrue(ScopedRoleTemplates::grants([ScopedRoles::PROJECT_MANAGER], Permission::ProjectsManage));
         $this->assertFalse(ScopedRoleTemplates::grants([ScopedRoles::PROJECT_MANAGER], Permission::TeamsManage));
+        foreach ([Permission::WorkCreate, Permission::WorkEdit, Permission::WorkTransition, Permission::WorkAssign] as $work) {
+            $this->assertTrue(ScopedRoleTemplates::grants([ScopedRoles::PROJECT_MANAGER], $work));
+            $this->assertFalse(ScopedRoleTemplates::grants([ScopedRoles::TEAM_LEAD], $work));
+        }
+        $this->assertFalse(ScopedRoleTemplates::grants([ScopedRoles::PROJECT_MANAGER], Permission::WorkApprove));
         $this->assertFalse(ScopedRoleTemplates::grants(['unknown.role'], Permission::TeamsManage));
         $this->assertFalse(ScopedRoleTemplates::grants([], Permission::TeamsManage));
     }
