@@ -10,6 +10,14 @@ The system MUST support parent-child team relationships within the same organiza
 - **WHEN** se crea una relación que formaría un ciclo
 - **THEN** se rechaza
 
+### Requirement: Membresía de equipo sin acceso implícito
+The system MUST validate the team hierarchy when members are added or teams are reorganized, and team membership MUST NOT grant access to every project of the organization.
+
+#### Scenario: Membresía de equipo sin acceso implícito
+- **GIVEN** un equipo con un subequipo
+- **WHEN** se agrega un miembro o se reorganiza la jerarquía
+- **THEN** se valida la ausencia de ciclos y el miembro solo accede a los proyectos asignados explícitamente a su equipo
+
 ### Requirement: Proyectos aislados
 The system MUST isolate each project by organization and MUST reject access by users or teams without appropriate authorization.
 

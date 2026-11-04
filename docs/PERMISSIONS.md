@@ -6,6 +6,7 @@ Roles base: platform_operator (infra, sin lectura universal), org_owner, org_adm
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `organization.manage` | Sí | No | No | No | No | No | No |
 | `members.invite` | Sí | Config. | No | No | No | No | No |
+| `members.manage` (revocar, cambiar roles) | Sí | No | No | No | No | No | No |
 | `teams.manage` | Sí | Config. | Equipo propio | No | No | No | No |
 | `projects.create` | Sí | Config. | Config. | No | No | No | No |
 | `projects.manage` | Sí | Proyecto propio | No | No | No | No | No |

@@ -29,3 +29,4 @@ Homestead.yaml
 Thumbs.db
 /backup/
 /.claude/settings.local.json
+/.deptrac.cache
