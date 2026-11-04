@@ -32,7 +32,7 @@
   - Evidencia: suite completa (308 tests) contra `postgres-test` como `orbixa_app`, sin BYPASSRLS; `WorkflowSchemaTest` y `PlanningSchemaTest` con otra organización.
 - [x] Pruebas de permisos permitidos/denegados para roles y alcances aplicables.
   - Evidencia: `WorkflowTransitionsTest`, `WorkflowConfigurationTest`, `CyclesTest`, `FlowMetricsTest`, `WorkflowReviewTest` y `ScopedRoleTemplatesTest`.
-- [ ] Revisión automática de límites modulares en CI y contratos de integración.
-  - En local: deptrac sin violaciones, con capas `WorkWorkflowContracts` y `WorkPlanningContracts`. Falta el run de CI del PR.
+- [x] Revisión automática de límites modulares en CI y contratos de integración.
+  - Evidencia: CI del PR #6 (run 41911626430) en verde con PHP 8.4 y 8.5 sobre PostgreSQL 18: Pint, PHPStan, deptrac sin violaciones (incluidas las capas `WorkWorkflowContracts` y `WorkPlanningContracts`), `TrustedReadersBoundaryTest` y suite completa como `orbixa_app`.
 - [x] Documentar migraciones, rollback, cambios de API y evidencia de funcionamiento.
   - Evidencia: `docs/API.md` (sección 05), `docs/EVENTS.md` (payloads 05), `docs/DATA_MODEL.md` y `docs/WORKFLOWS.md`. Migraciones `2026_11_07_000100`–`000800` roll-forward, aplicadas en pruebas y desarrollo con backup previo; las de datos se verificaron sobre los proyectos de prueba.
