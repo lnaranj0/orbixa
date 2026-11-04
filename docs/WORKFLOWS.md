@@ -3,6 +3,12 @@
 ## Modelo
 `workflow` configurable por proyecto: `status` con categoría global (backlog, ready, active, review, done, canceled), nombre y orden local; `transition` con source/destination, permisos, políticas de guardia; `mode` continuous/sprint/hybrid; optional WIP limit.
 
+## Implementación (05)
+- Cada proyecto tiene su workflow, inicialmente igual al flujo base de esta página.
+- Las transiciones solo **restringen** lo que permiten los roles: permiso de lista blanca, motivo, bloqueadores y límite WIP duro.
+- Cualquier paso a `done` exige `work.approve`. El *reviewer* todavía no transiciona: Review→Done lo hacen owner, admin, project manager o el `project.manager` del proyecto.
+- El modo (`continuous|sprint|hybrid`) es de Planning, no del workflow.
+
 ## Flujo base
 | Origen | Destino | Guarda / actor |
 | --- | --- | --- |

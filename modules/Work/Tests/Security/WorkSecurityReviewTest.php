@@ -23,6 +23,7 @@ use Modules\Work\Application\AssignWorkItem;
 use Modules\Work\Application\CreateWorkItem;
 use Modules\Work\Application\LinkItemTeam;
 use Modules\Work\Application\UpdateWorkItem;
+use Modules\Work\Contracts\Workflow\TransitionPolicy;
 use Modules\Work\Contracts\WorkOperationDenied;
 
 /**
@@ -78,10 +79,12 @@ final class WorkSecurityReviewTest extends SecurityTestCase
         $this->as($this->owner, function () {
             $project = $this->app->make(CreateProject::class)->handle($this->owner, 'CHN', 'Chain');
             $owner = $this->membershipId($this->owner);
+            $workflow = $this->app->make(TransitionPolicy::class);
+            $workflow->ensureWorkflow($project);
             DB::insert(
-                "insert into work.items (organization_id, project_id, number, key, type, title, created_by_membership_id)
-                 select platform.current_organization_id(), ?::uuid, n, 'CHN-' || n, 'task', 'Link ' || n, ?::uuid from generate_series(1, 1003) n",
-                [$project, $owner]
+                "insert into work.items (organization_id, project_id, number, key, type, title, status, workflow_status_id, created_by_membership_id)
+                 select platform.current_organization_id(), ?::uuid, n, 'CHN-' || n, 'task', 'Link ' || n, 'backlog', ?::uuid, ?::uuid from generate_series(1, 1003) n",
+                [$project, $workflow->initialStatus($project)->id, $owner]
             );
             DB::insert(
                 'insert into work.item_dependencies (organization_id, project_id, blocker_item_id, blocked_item_id, created_by_membership_id)

@@ -62,6 +62,25 @@ Mismas reglas que 02: sesión + CSRF, membresía verificada por petición, `thro
 | POST / DELETE | `/items/{item}/teams[/{team}]` | Equipo activo; no da visibilidad |
 | POST / DELETE | `/items/{item}/dependencies[/{blocker}]` | Mismo proyecto, sin ciclos, máximo 50 |
 
+## Workflows, planificación y métricas (05, implementado)
+Mismas reglas que 02–04: sesión + CSRF, membresía verificada en cada petición, 404 idéntico para lo no visible, 403 para lo visible sin permiso, 422 de regla y 409 de versión.
+
+| Método | Ruta | Notas |
+| --- | --- | --- |
+| GET | `/projects/{project}/workflow` | Versión, estados (con categoría, límite WIP y archivado) y transiciones. Cualquiera que vea el proyecto |
+| POST / PATCH | `/projects/{project}/workflow/statuses[/{status}]` | `work.edit` sobre el proyecto y `expected_version`. La categoría no se puede cambiar |
+| POST | `/projects/{project}/workflow/statuses/{status}/archive` | Nunca el estado inicial, uno con items ni el último `done` |
+| POST / PATCH | `/projects/{project}/workflow/transitions[/{transition}]` | `required_permission` ∈ `work.transition`, `work.approve`; hacia `done`, siempre `work.approve` |
+| POST | `/projects/{project}/workflow/transitions/{transition}/disable` | Se desactivan, nunca se borran |
+| POST | `/items/{item}/transitions` | `{expected_version, to, reason?}`: `to` es un id de estado o una categoría. Transición no configurada: 422 auditado. WIP lleno: 422 sin contadores. Bloqueadores abiertos: 422. Hacia `done` sin `work.approve`: 403 |
+| GET / PUT | `/projects/{project}/planning` | Modo `continuous|sprint|hybrid` (PUT exige `planning.manage`) y ciclos |
+| POST | `/projects/{project}/cycles` | Solo en modo sprint o híbrido; fechas de 180 días como máximo; capacidad opcional |
+| GET | `/cycles/{cycle}` | Ciclo y pertenencias con su resultado |
+| POST | `/cycles/{cycle}/start`, `/cycles/{cycle}/close` | Un ciclo activo por proyecto. El cierre marca `delivered`/`spilled` y, con `carry_to_cycle_id`, traslada lo no terminado (no cancelado) |
+| POST / DELETE | `/cycles/{cycle}/items[/{item}]` | Mismo proyecto, un ciclo abierto por item; ciclo cerrado: 422 |
+| GET | `/reports/flow` | `?project_id&from&to` (366 días como máximo, por defecto 30). Throughput, lead, cycle time y aging (mediana y p85) sobre los proyectos visibles |
+| GET | `/monitoring/metrics` | Las mismas métricas sobre el alcance de grants del visor; alcance vacío: sin cifras |
+
 ## Ejemplo transición
 ```json
 { "to_status_id":"uuid", "reason":"Aprobado QA", "expected_version":12 }

@@ -16,6 +16,8 @@ use Modules\Work\Application\CreateWorkItem;
 use Modules\Work\Application\TransitionWorkItem;
 use Modules\Work\Application\WorkGuard;
 use Modules\Work\Application\WorkQueries;
+use Modules\Work\Contracts\Workflow\TransitionPolicy;
+use Modules\Work\Contracts\Workflow\TransitionRule;
 use Modules\Work\Contracts\WorkRuleViolation;
 use Modules\Work\Contracts\WorkVersionConflict;
 use Modules\Work\Domain\ItemRules;
@@ -80,27 +82,31 @@ final class WorkPageController
         ]);
     }
 
-    public function show(Request $request, ActiveOrganization $active, WorkQueries $queries, WorkGuard $guard): View
+    public function show(Request $request, ActiveOrganization $active, WorkQueries $queries, WorkGuard $guard, TransitionPolicy $workflow): View
     {
         $user = $this->user($request);
         $itemId = (string) $request->route('item');
 
-        [$detail, $activity, $canTransition] = $this->tenant->runFor($user, $active->id, function () use ($user, $guard, $queries, $itemId) {
+        [$detail, $activity, $canTransition, $next] = $this->tenant->runFor($user, $active->id, function () use ($user, $guard, $queries, $itemId, $workflow) {
             $detail = $queries->detail($user, $itemId);
             $membershipId = $guard->context($user);
             [$item, $project] = $guard->item($user, $itemId);
+            $current = $item['workflow_status_id'] ?? $workflow->statusForCategory($project->id, $item['status'])?->id;
 
-            return [$detail, $queries->activity($user, $itemId, null, 100), $guard->canChange($user, $membershipId, $item, $project, Permission::WorkTransition)];
+            return [
+                $detail,
+                $queries->activity($user, $itemId, null, 100),
+                $guard->canChange($user, $membershipId, $item, $project, Permission::WorkTransition),
+                $current === null ? [] : $workflow->transitionsFrom($project->id, $current),
+            ];
         });
-
-        $next = array_values(array_filter(ItemRules::STATUSES, fn (string $to) => ItemRules::allows($detail['item']['status'], $to)));
 
         return view('work::work.show', [
             'organizationId' => $active->id->value,
             'detail' => $detail,
             'activity' => $activity,
             'canTransition' => $canTransition,
-            'nextStatuses' => array_map(fn (string $to) => ['status' => $to, 'needsReason' => ItemRules::needsReason($detail['item']['status'], $to)], $next),
+            'nextStatuses' => array_map(fn (TransitionRule $rule) => ['id' => $rule->to->id, 'name' => $rule->to->name, 'needsReason' => $rule->requiresReason], $next),
             'statusLabels' => self::STATUS_LABELS,
         ]);
     }
@@ -130,7 +136,7 @@ final class WorkPageController
     {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:0'],
-            'to' => ['required', 'string', 'in:'.implode(',', ItemRules::STATUSES)],
+            'to' => ['required', 'string', 'max:64'],
             'reason' => ['nullable', 'string', 'max:500', 'regex:/^[^\p{Cc}\p{Cf}]*$/u'],
         ]);
         $user = $this->user($request);

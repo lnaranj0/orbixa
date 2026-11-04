@@ -3,8 +3,8 @@
 namespace Modules\Work\Domain;
 
 /**
- * Fixed vocabulary of 03 (W2-W4). The status graph is the base flow of
- * docs/WORKFLOWS.md until 05 introduces configurable workflows.
+ * Fixed vocabulary of 03 (W2-W4). STATUSES are the global categories; the
+ * allowed transitions live in each project's workflow (05).
  */
 final class ItemRules
 {
@@ -13,27 +13,6 @@ final class ItemRules
     public const PRIORITIES = ['none', 'low', 'medium', 'high', 'urgent'];
 
     public const STATUSES = ['backlog', 'ready', 'active', 'review', 'done', 'canceled'];
-
-    /** @var array<string, list<string>> */
-    private const TRANSITIONS = [
-        'backlog' => ['ready', 'canceled'],
-        'ready' => ['active', 'canceled'],
-        'active' => ['review', 'canceled'],
-        'review' => ['active', 'done', 'canceled'],
-        'done' => ['active'],
-        'canceled' => ['backlog'],
-    ];
-
-    /** Transitions that need a reason (reopen, cancel, restore). */
-    public static function needsReason(string $from, string $to): bool
-    {
-        return $to === 'canceled' || $from === 'done' || $from === 'canceled';
-    }
-
-    public static function allows(string $from, string $to): bool
-    {
-        return in_array($to, self::TRANSITIONS[$from] ?? [], true);
-    }
 
     public static function rank(string $type): int
     {

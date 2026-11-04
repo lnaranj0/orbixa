@@ -22,6 +22,10 @@ final class ScopedRoleTemplates
             ScopedRoles::PROJECT_MANAGER => [
                 Permission::ProjectsManage, Permission::WorkCreate, Permission::WorkEdit,
                 Permission::WorkTransition, Permission::WorkAssign,
+                // 05 D-A: approving (moving into done) in their own project.
+                Permission::WorkApprove,
+                // 05 P9: cycles of their own project.
+                Permission::PlanningManage,
             ],
         ];
     }

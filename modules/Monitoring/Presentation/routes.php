@@ -12,6 +12,7 @@ Route::middleware(['web', 'auth', ActiveOrganization::MIDDLEWARE])
     ->name('api.monitoring.')
     ->group(function () {
         Route::get('/overview', [MonitoringApiController::class, 'overview'])->middleware('throttle:reads')->name('overview');
+        Route::get('/metrics', [MonitoringApiController::class, 'metrics'])->middleware('throttle:reads')->name('metrics');
         Route::get('/items', [MonitoringApiController::class, 'items'])->middleware('throttle:reads')->name('items');
         Route::get('/items/{item}', [MonitoringApiController::class, 'item'])->middleware('throttle:reads')->name('item');
         Route::get('/users/{member}', [MonitoringApiController::class, 'member'])->middleware('throttle:reads')->name('member');

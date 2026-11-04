@@ -15,17 +15,17 @@ use Modules\Work\Contracts\WorkVersionConflict;
  *
  * @phpstan-type ItemRow array{
  *     id: string, project_id: string, number: int, key: string, type: string, parent_id: string|null,
- *     title: string, description: string|null, status: string, priority: string, estimate: string|null,
+ *     title: string, description: string|null, status: string, workflow_status_id: string|null, priority: string, estimate: string|null,
  *     due_on: string|null, completed_at: string|null, created_at: string, updated_at: string, version: int
  * }
  */
 final class ItemStore
 {
     private const COLUMNS = 'id::text as id, project_id::text as project_id, number, key, type, parent_id::text as parent_id,
-        title, description, status, priority, estimate::text as estimate, due_on::text as due_on,
+        title, description, status, workflow_status_id::text as workflow_status_id, priority, estimate::text as estimate, due_on::text as due_on,
         completed_at::text as completed_at, created_at::text as created_at, updated_at::text as updated_at, lock_version';
 
-    private const UPDATABLE = ['type', 'parent_id', 'title', 'description', 'status', 'priority', 'estimate', 'due_on', 'completed_at'];
+    private const UPDATABLE = ['type', 'parent_id', 'title', 'description', 'status', 'workflow_status_id', 'priority', 'estimate', 'due_on', 'completed_at'];
 
     private const UUID = '/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/';
 
@@ -52,15 +52,53 @@ final class ItemStore
     /**
      * @param  array{type: string, parent_id: string|null, title: string, description: string|null, priority: string, estimate: string|null, due_on: string|null}  $values
      */
-    public function create(string $projectId, int $number, string $key, array $values, string $createdByMembershipId): string
+    public function create(string $projectId, int $number, string $key, array $values, string $statusId, string $category, string $createdByMembershipId): string
     {
         return $this->guarded(fn () => (string) ((array) $this->connection()->selectOne(
-            'insert into work.items (organization_id, project_id, number, key, type, parent_id, title, description, priority, estimate, due_on, created_by_membership_id)
-             values (platform.current_organization_id(), ?::uuid, ?, ?, ?, ?::uuid, ?, ?, ?, ?::numeric, ?::date, ?::uuid)
+            'insert into work.items (organization_id, project_id, number, key, type, parent_id, title, description, priority, estimate, due_on,
+                 status, workflow_status_id, created_by_membership_id)
+             values (platform.current_organization_id(), ?::uuid, ?, ?, ?, ?::uuid, ?, ?, ?, ?::numeric, ?::date, ?, ?::uuid, ?::uuid)
              returning id::text as id',
             [$projectId, $number, $key, $values['type'], $values['parent_id'], $values['title'], $values['description'],
-                $values['priority'], $values['estimate'], $values['due_on'], $createdByMembershipId]
+                $values['priority'], $values['estimate'], $values['due_on'], $category, $statusId, $createdByMembershipId]
         ))['id']);
+    }
+
+    /** Append-only status history (P6), written in the same transaction as the change. */
+    public function recordStatusChange(string $itemId, string $projectId, ?string $fromStatusId, ?string $fromCategory, string $toStatusId, string $toCategory, string $actorMembershipId): void
+    {
+        $this->connection()->insert(
+            'insert into work.item_status_changes (organization_id, project_id, item_id, from_status_id, to_status_id, from_category, to_category, actor_membership_id)
+             values (platform.current_organization_id(), ?::uuid, ?::uuid, ?::uuid, ?::uuid, ?, ?, ?::uuid)',
+            [$projectId, $itemId, $fromStatusId, $toStatusId, $fromCategory, $toCategory, $actorMembershipId]
+        );
+    }
+
+    /**
+     * Serializes moves into one status (P5): concurrent transitions into a
+     * full column wait here and recount after the first commits.
+     */
+    public function lockStatus(string $statusId): void
+    {
+        $this->connection()->selectOne('select pg_advisory_xact_lock(hashtextextended(?, 0))', ['work.wip:'.$statusId]);
+    }
+
+    public function countInStatus(string $statusId): int
+    {
+        return (int) ((array) $this->connection()->selectOne(
+            'select count(*) as total from work.items where workflow_status_id = ?::uuid',
+            [$statusId]
+        ))['total'];
+    }
+
+    /** Active blockers that are not finished (done) or dropped (canceled). */
+    public function openBlockerCount(string $itemId): int
+    {
+        return (int) ((array) $this->connection()->selectOne(
+            "select count(*) as total from work.item_dependencies d join work.items b on b.id = d.blocker_item_id
+              where d.blocked_item_id = ?::uuid and d.removed_at is null and b.status not in ('done', 'canceled')",
+            [$itemId]
+        ))['total'];
     }
 
     /**
@@ -168,7 +206,7 @@ final class ItemStore
         if ($changes === [] || array_diff(array_keys($changes), self::UPDATABLE) !== []) {
             throw new \InvalidArgumentException('Only mutable work item columns can be updated.');
         }
-        $casts = ['parent_id' => '::uuid', 'estimate' => '::numeric', 'due_on' => '::date', 'completed_at' => '::timestamptz'];
+        $casts = ['parent_id' => '::uuid', 'workflow_status_id' => '::uuid', 'estimate' => '::numeric', 'due_on' => '::date', 'completed_at' => '::timestamptz'];
         $assignments = implode(', ', array_map(fn (string $column) => "{$column} = ?".($casts[$column] ?? ''), array_keys($changes)));
 
         return $this->guarded(fn () => $this->connection()->update(
@@ -525,7 +563,7 @@ final class ItemStore
     private static function prefixed(): string
     {
         return 'i.id::text as id, i.project_id::text as project_id, i.number, i.key, i.type, i.parent_id::text as parent_id,
-            i.title, null::text as description, i.status, i.priority, i.estimate::text as estimate, i.due_on::text as due_on,
+            i.title, null::text as description, i.status, i.workflow_status_id::text as workflow_status_id, i.priority, i.estimate::text as estimate, i.due_on::text as due_on,
             i.completed_at::text as completed_at, i.created_at::text as created_at, i.updated_at::text as updated_at, i.lock_version';
     }
 
@@ -557,6 +595,7 @@ final class ItemStore
             'title' => (string) $c['title'],
             'description' => $nullable('description'),
             'status' => (string) $c['status'],
+            'workflow_status_id' => $nullable('workflow_status_id'),
             'priority' => (string) $c['priority'],
             'estimate' => $nullable('estimate'),
             'due_on' => $nullable('due_on'),

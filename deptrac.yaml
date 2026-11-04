@@ -97,6 +97,20 @@ deptrac:
           must_not:
             - type: classLike
               value: '^Modules\\Work\\Contracts\\Monitoring\\'
+            - type: classLike
+              value: '^Modules\\Work\\Contracts\\Workflow\\'
+            - type: classLike
+              value: '^Modules\\Work\\Contracts\\Planning\\'
+    # 05 review B5: actor-less category lookup, only for Planning.
+    - name: WorkPlanningContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Work\\Contracts\\Planning\\'
+    # 05 P2: the transition port; only Work (consumer) and Workflow (implementation).
+    - name: WorkWorkflowContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Work\\Contracts\\Workflow\\'
     # 04 M7: trusted readers without an actor; only Monitoring may use them.
     - name: WorkMonitoringContracts
       collectors:
@@ -124,6 +138,45 @@ deptrac:
           must_not:
             - type: classLike
               value: '^Modules\\Monitoring\\Contracts\\'
+    - name: WorkflowContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Workflow\\Contracts\\'
+    - name: WorkflowInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Workflow\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Workflow\\Contracts\\'
+    - name: PlanningContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Planning\\Contracts\\'
+    - name: PlanningInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Planning\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Planning\\Contracts\\'
+    - name: ReportingContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\Reporting\\Contracts\\'
+    - name: ReportingInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\Reporting\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\Reporting\\Contracts\\'
     - name: AuditContracts
       collectors:
         - type: classLike
@@ -147,6 +200,9 @@ deptrac:
       - PortfolioContracts
       - WorkContracts
       - MonitoringContracts
+      - WorkflowContracts
+      - PlanningContracts
+      - ReportingContracts
     PlatformContracts: ~
     PlatformInternals:
       - PlatformContracts
@@ -189,10 +245,14 @@ deptrac:
       - TeamsContracts
       - PortfolioContracts
     WorkMonitoringContracts: ~
+    WorkWorkflowContracts: ~
+    WorkPlanningContracts: ~
     PortfolioCatalogContracts: ~
     WorkInternals:
       - WorkContracts
       - WorkMonitoringContracts
+      - WorkWorkflowContracts
+      - WorkPlanningContracts
       - PortfolioContracts
       - TeamsContracts
       - IdentityTenancyContracts
@@ -209,6 +269,33 @@ deptrac:
       - TeamsContracts
       - IdentityTenancyContracts
       - AccessContracts
+      - PlatformContracts
+    WorkflowContracts:
+      - PlatformContracts
+    WorkflowInternals:
+      - WorkflowContracts
+      - WorkWorkflowContracts
+      - WorkContracts
+      - PortfolioContracts
+      - IdentityTenancyContracts
+      - AccessContracts
+      - PlatformContracts
+    PlanningContracts:
+      - PlatformContracts
+    PlanningInternals:
+      - PlanningContracts
+      - WorkPlanningContracts
+      - WorkContracts
+      - PortfolioContracts
+      - IdentityTenancyContracts
+      - AccessContracts
+      - PlatformContracts
+    ReportingContracts:
+      - PlatformContracts
+    ReportingInternals:
+      - ReportingContracts
+      - WorkContracts
+      - IdentityTenancyContracts
       - PlatformContracts
     AuditContracts:
       - PlatformContracts

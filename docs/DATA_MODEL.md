@@ -10,8 +10,8 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 | `teams` | teams (parent_team_id), team_members, team_parent_changes |
 | `portfolio` | projects, project_members, project_team_links (02); project_repositories (06). `project_counters` pasa a 03 y los hitos a `12-project-management` |
 | `work` | items, item_types, labels, item_labels, item_comments, item_attachments, item_assignments, item_dependencies, item_events |
-| `workflow` | workflows, statuses, transitions, transition_guards, project_workflows |
-| `planning` | cycles, cycle_items, cycle_capacity, saved_views |
+| `workflow` | workflows (uno por proyecto), statuses, transitions (05). Las guardas viven como columnas de la transición; `project_workflows` compartibles quedan para más adelante |
+| `planning` | project_settings (modo), cycles (con capacidad), cycle_items (05). La pertenencia a ciclos vive aquí; `work.items` no tiene `cycle_id`. `saved_views` queda para más adelante |
 | `specs` | changes, artifacts, spec_tasks, work_spec_links, spec_sync_runs |
 | `integrations` | connections, github_installations, github_repositories, external_resources, resource_links, webhook_inbox, integration_sync_runs |
 | `agents` | agents, agent_capabilities, agent_policies, executions, execution_events |
@@ -30,6 +30,7 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 
 ## Columnas críticas
 `work.items`: id, organization_id, project_id, key, type_id, parent_id, workflow_status_id, title, description, priority, estimate, due_at, created_by, lock_version.
+  - **Implementado en 05:** `workflow_status_id NOT NULL` con FK compuesta `(organization_id, project_id, workflow_status_id, status) → workflow.statuses(organization_id, project_id, id, category)`; `status` queda como categoría denormalizada. Historial tipado `work.item_status_changes`, append-only, del que salen las métricas.
   - **Implementado en 03:** `type` texto con 7 valores (catálogo configurable más adelante), `status` como categoría global hasta que 05 añada `workflow_status_id`, `due_on date`, `number` + `key` (`<PROYECTO>-<n>`) asignados por `work.project_counters`. La FK al padre incluye `project_id` (mismo proyecto) y un trigger impide ciclos y más de 5 niveles.
 `work.item_assignments`: id, organization_id, item_id, actor_type, actor_id, assignment_role, assigned_by, assigned_at.
   - **Implementado en 03:** solo `membership_id` (humano) con `role owner|collaborator`, filas temporales y un único owner activo; 08 añadirá `agent_id` con CHECK "exactamente uno". También `work.labels`/`item_labels` por proyecto, `item_team_links`, `item_dependencies` (mismo proyecto, sin ciclos, máximo 50) e `item_events` append-only. Evitar FK polimórfica sin guardas; alternativa recomendada tabla normalizada `work_actors(id, organization_id, type, user_id nullable, agent_id nullable)` con CHECK que solo uno está definido.

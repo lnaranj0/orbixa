@@ -16,5 +16,9 @@
 </section>
 
 <a href="{{ route('work.backlog', ['organization' => $organizationId, 'project' => $project->id]) }}" class="mt-6 mr-4 inline-block rounded-lg bg-slate-900 px-4 py-2 font-medium text-white hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-sky-400">Ver backlog</a>
+@foreach (['workflow.show' => 'Workflow', 'planning.show' => 'Planificación'] as $route => $label)
+    <a href="{{ route($route, ['organization' => $organizationId, 'project' => $project->id]) }}" class="mt-6 mr-4 inline-block rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:hover:bg-slate-800">{{ $label }}</a>
+@endforeach
+<a href="{{ route('reports.flow', ['organization' => $organizationId, 'project_id' => $project->id]) }}" class="mt-6 mr-4 inline-block rounded-lg border border-slate-300 px-4 py-2 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-400 dark:border-slate-600 dark:hover:bg-slate-800">Métricas</a>
 <a href="{{ route('projects.index', ['organization' => $organizationId]) }}" class="mt-6 inline-block text-sky-700 underline-offset-2 hover:underline focus:outline-none focus:ring-2 focus:ring-sky-400 dark:text-sky-300">Volver a proyectos</a>
 @endsection

@@ -22,6 +22,7 @@ final class WorkManifest implements ModuleManifest
             'work.item_assignments',
             'work.item_team_links',
             'work.item_dependencies',
+            'work.item_status_changes',
         ];
     }
 }

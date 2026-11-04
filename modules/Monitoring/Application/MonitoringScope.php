@@ -25,7 +25,14 @@ final readonly class MonitoringScope
         public array $teamIds,
         public array $auditedGrantIds,
         public bool $implicit,
+        /** Same scope without per-person (user grant) clauses: flow metrics never measure one person (05 review M3). */
+        public ?ItemSelector $metricsSelector = null,
     ) {}
+
+    public function metricsSelector(): ItemSelector
+    {
+        return $this->metricsSelector ?? ItemSelector::nothing();
+    }
 
     public function isEmpty(): bool
     {

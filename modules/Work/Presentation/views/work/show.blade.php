@@ -41,7 +41,7 @@
             <input type="hidden" name="expected_version" value="{{ $item['version'] }}">
             <label for="to" class="block text-sm font-medium">Nuevo estado</label>
             <select id="to" name="to" class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:border-slate-600 dark:bg-slate-900">
-                @foreach ($nextStatuses as $next)<option value="{{ $next['status'] }}">{{ $statusLabels[$next['status']] }}{{ $next['needsReason'] ? ' (requiere motivo)' : '' }}</option>@endforeach
+                @foreach ($nextStatuses as $next)<option value="{{ $next['id'] }}">{{ $next['name'] }}{{ $next['needsReason'] ? ' (requiere motivo)' : '' }}</option>@endforeach
             </select>
             <label for="reason" class="block text-sm font-medium">Motivo</label>
             <input id="reason" name="reason" maxlength="500" class="w-full rounded-lg border border-slate-300 px-3 py-2 focus:border-sky-500 focus:outline-none focus:ring-2 focus:ring-sky-200 dark:border-slate-600 dark:bg-slate-900">

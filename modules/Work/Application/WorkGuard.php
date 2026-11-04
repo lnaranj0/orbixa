@@ -182,7 +182,7 @@ final class WorkGuard
         return false;
     }
 
-    private function allowsInProject(Authenticatable $actor, Permission $permission, string $projectId): bool
+    public function allowsInProject(Authenticatable $actor, Permission $permission, string $projectId): bool
     {
         return $this->gate->forUser($actor)->allows($permission->value, [Scope::project($projectId)]);
     }

@@ -141,7 +141,7 @@ final class WorkApiController
     {
         $validated = $request->validate([
             'expected_version' => ['required', 'integer', 'min:0'],
-            'to' => ['required', 'string', 'in:'.implode(',', ItemRules::STATUSES)],
+            'to' => ['required', 'string', 'max:64'], // a workflow status id, or a category
             'reason' => ['sometimes', 'nullable', 'string', 'max:500', self::TEXT],
         ]);
         $user = $this->user($request);
@@ -317,6 +317,7 @@ final class WorkApiController
             'id' => $item['id'], 'key' => $item['key'], 'project_id' => $item['project_id'], 'type' => $item['type'],
             'parent_id' => $item['parent_id'], 'title' => $item['title'], 'status' => $item['status'],
             'priority' => $item['priority'], 'estimate' => $item['estimate'], 'due_on' => $item['due_on'],
+            'workflow_status_id' => $item['workflow_status_id'],
             'completed_at' => $item['completed_at'], 'updated_at' => $item['updated_at'], 'version' => $item['version'],
         ];
     }

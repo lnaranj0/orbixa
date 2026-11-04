@@ -3,6 +3,8 @@
 namespace Modules\Portfolio\Application;
 
 use Illuminate\Contracts\Auth\Authenticatable;
+use Modules\Access\Contracts\Authorizer;
+use Modules\Access\Contracts\Permission;
 use Modules\IdentityTenancy\Contracts\MembershipLookup;
 use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\Platform\Contracts\Events\ActorReference;
@@ -26,6 +28,7 @@ final class AddProjectMember
         private readonly ProjectStore $projects,
         private readonly MembershipLookup $memberships,
         private readonly DomainEventRecorder $events,
+        private readonly Authorizer $authorizer,
     ) {}
 
     public function handle(Authenticatable $actor, string $projectId, string $membershipId, string $role = 'member'): void
@@ -41,6 +44,11 @@ final class AddProjectMember
             throw ProjectOperationDenied::because('Nobody can add themselves to a project.');
         }
         if (! ProjectStore::isUuid($membershipId) || ! $this->memberships->lockActive($membershipId)) {
+            throw MembershipReferenceInvalid::make();
+        }
+        // 05 review M4: project.manager grants approve/edit/planning in scope;
+        // only working roles (organization-level work.create) may hold it.
+        if ($role === 'manager' && ! $this->authorizer->membershipHas($membershipId, Permission::WorkCreate)) {
             throw MembershipReferenceInvalid::make();
         }
 

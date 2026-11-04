@@ -51,6 +51,16 @@ Los eventos transportan IDs y metadatos mínimos, no credenciales ni texto sensi
 | `work.item.blocked` | work_item | `project_id`, `blocker_item_id` |
 | `audit.sensitive_access.granted` | project | `operation: work.view` para detalle o actividad de items de un proyecto `restricted` leídos por rol de organización |
 
+### Payloads de 05 (versión 1 salvo indicación)
+| Evento | Agregado | Payload |
+| --- | --- | --- |
+| `work.item.transitioned` **v2** | work_item | `project_id`, `from`, `to` (categorías), `from_status_id`, `to_status_id` |
+| `work.item.transition_rejected` | work_item | `project_id`, `from_status_id`, `to_status_id`. Se registra tras el rollback, uno por actor, item y ventana de 10 minutos |
+| `workflow.updated` | workflow | `project_id`, `version`, `operation` (`status_added`, `status_updated`, `status_archived`, `transition_added`, `transition_updated`, `transition_disabled`) e ids |
+| `planning.cycle.created` / `.started` | cycle | `project_id` |
+| `planning.cycle.item_added` / `.item_removed` | cycle | `project_id`, `item_id` |
+| `planning.cycle.closed` | cycle | `project_id`, `delivered`, `spilled`, `carried_to_cycle_id` |
+
 ## Webhooks GitHub MVP
 `installation`, `installation_repositories`, `repository`, `pull_request`, `pull_request_review`, `push`; incluir `issues`/`issue_comment` solo si se habilita sincronización de issues. Firma HMAC SHA-256 sobre bytes originales, comparación temporalmente segura, secret rotatable. Delivery GUID + instalación + event/action: dedup y trazabilidad. Si verificación falla retornar 401; si el evento es válido pero no seleccionado, 2xx con estado ignored. Responder en menos de 10 segundos tras persistir inbox, sin procesamiento pesado síncrono.
 

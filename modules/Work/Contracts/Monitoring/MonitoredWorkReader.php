@@ -32,4 +32,14 @@ interface MonitoredWorkReader
     public function find(ItemSelector $selector, string $itemId): ?MonitoredItem;
 
     public function covers(ItemSelector $selector, string $itemId): bool;
+
+    /**
+     * Flow metrics over the selector only (05 P8); an empty selector gives
+     * zero throughput and no statistics, never organization figures.
+     *
+     * @param  string  $from  inclusive date (Y-m-d)
+     * @param  string  $to  exclusive date (Y-m-d)
+     * @return array{throughput: int, lead_time_days: array{count: int, median: float|null, p85: float|null}, cycle_time_days: array{count: int, median: float|null, p85: float|null}, aging_days: array{count: int, median: float|null, p85: float|null}}
+     */
+    public function flowMetrics(ItemSelector $selector, string $from, string $to): array;
 }

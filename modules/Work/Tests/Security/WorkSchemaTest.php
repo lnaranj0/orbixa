@@ -12,6 +12,7 @@ use Modules\Platform\Contracts\Tenancy\OrganizationId;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Tests\Security\SecurityTestCase;
 use Modules\Portfolio\Application\CreateProject;
+use Modules\Work\Contracts\Workflow\TransitionPolicy;
 
 /**
  * 03 increment 2: Work core schema as the runtime role (W1-W4, W9, W10, W13).
@@ -281,10 +282,13 @@ final class WorkSchemaTest extends SecurityTestCase
 
     private function insertItem(Connection $db, string $project, string $type, int $number, string $key, ?string $parent = null): string
     {
+        $workflow = $this->app->make(TransitionPolicy::class);
+        $workflow->ensureWorkflow($project);
+
         return (string) $db->selectOne(
-            'insert into work.items (organization_id, project_id, number, key, type, parent_id, title, created_by_membership_id)
-             values (platform.current_organization_id(), ?, ?, ?, ?, ?, ?, ?) returning id::text as id',
-            [$project, $number, $key, $type, $parent, "Item {$key}", $this->ownerMembership()]
+            "insert into work.items (organization_id, project_id, number, key, type, parent_id, title, status, workflow_status_id, created_by_membership_id)
+             values (platform.current_organization_id(), ?, ?, ?, ?, ?, ?, 'backlog', ?, ?) returning id::text as id",
+            [$project, $number, $key, $type, $parent, "Item {$key}", $workflow->initialStatus($project)->id, $this->ownerMembership()]
         )->id;
     }
 
