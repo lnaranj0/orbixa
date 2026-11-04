@@ -6,8 +6,8 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 | --- | --- |
 | `identity` | users, auth_identities, organizations, organization_memberships, invitations, support_access_grants |
 | `access` | roles, permissions, role_permissions, membership_roles, project_role_grants, monitoring_grants, service_principals |
-| `teams` | teams (parent_team_id), team_members, team_project_links, team_closure (opcional) |
-| `portfolio` | projects, project_members, project_counters, milestones, project_repositories |
+| `teams` | teams (parent_team_id), team_members, team_parent_changes |
+| `portfolio` | projects, project_members, project_team_links (02); project_repositories (06). `project_counters` pasa a 03 y los hitos a `12-project-management` |
 | `work` | items, item_types, labels, item_labels, item_comments, item_attachments, item_assignments, item_dependencies, item_events |
 | `workflow` | workflows, statuses, transitions, transition_guards, project_workflows |
 | `planning` | cycles, cycle_items, cycle_capacity, saved_views |
