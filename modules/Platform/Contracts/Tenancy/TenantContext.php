@@ -26,6 +26,7 @@ interface TenantContext
      *
      * @throws TenantAccessDenied when the actor has no active membership
      * @throws TenantContextViolation when switching organization or actor inside an active context
+     * @throws \Throwable whatever the callback throws, after rolling the transaction back
      */
     public function runFor(Authenticatable $actor, OrganizationId $organization, Closure $callback): mixed;
 

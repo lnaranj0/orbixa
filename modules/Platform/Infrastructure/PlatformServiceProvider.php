@@ -2,16 +2,20 @@
 
 namespace Modules\Platform\Infrastructure;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Console\Events\CommandStarting;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Contracts\Console\Kernel as ConsoleKernel;
 use Illuminate\Database\Console\DumpCommand;
 use Illuminate\Database\Console\Seeds\SeedCommand;
+use Illuminate\Http\Request;
 use Illuminate\Queue\Events\JobProcessing;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Modules\Platform\Contracts\Events\DomainEventRecorder;
+use Modules\Platform\Contracts\Http\CursorCodec;
 use Modules\Platform\Contracts\Idempotency\IdempotencyStore;
 use Modules\Platform\Contracts\Modules\ModuleManifest;
 use Modules\Platform\Contracts\Observability\CorrelationId;
@@ -21,6 +25,7 @@ use Modules\Platform\Contracts\Tenancy\MembershipVerifier;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Infrastructure\Database\MigrationConnectionGuard;
 use Modules\Platform\Infrastructure\Events\PostgresDomainEventRecorder;
+use Modules\Platform\Infrastructure\Http\HmacCursorCodec;
 use Modules\Platform\Infrastructure\Idempotency\PostgresIdempotencyStore;
 use Modules\Platform\Infrastructure\Tenancy\DenyAllAdmissionVerifier;
 use Modules\Platform\Infrastructure\Tenancy\DenyAllMembershipVerifier;
@@ -39,11 +44,22 @@ final class PlatformServiceProvider extends ServiceProvider
         $this->app->scoped(TenantContext::class, PostgresTenantContext::class);
         $this->app->bind(DomainEventRecorder::class, PostgresDomainEventRecorder::class);
         $this->app->bind(IdempotencyStore::class, PostgresIdempotencyStore::class);
+        $this->app->singleton(CursorCodec::class, function ($app): CursorCodec {
+            $key = (string) $app['config']->get('app.key');
+            if ($key === '') {
+                throw new \RuntimeException('APP_KEY is required to sign pagination cursors.');
+            }
+
+            return new HmacCursorCodec($key);
+        });
         $this->app->tag([PlatformManifest::class], ModuleManifest::TAG);
     }
 
     public function boot(): void
     {
+        // Every tenant write route (POST/PATCH/DELETE) uses throttle:writes.
+        RateLimiter::for('writes', fn (Request $request) => Limit::perMinute(60)->by('user:'.$request->user()?->getAuthIdentifier()));
+
         $prohibitDestructive = ! config('database.allow_destructive_commands');
 
         // Covers db:wipe, migrate:fresh, migrate:refresh, migrate:reset, migrate:rollback.

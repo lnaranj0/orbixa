@@ -20,6 +20,30 @@ Prefix `/api/v1`, sesión web protegida CSRF y API personal/service token con sc
 | POST | `/organizations/{org}/agents/{agent}/execution-reports` | Reporte externo idempotente, autenticación servicio |
 | POST | `/webhooks/github` | GitHub App, autenticación HMAC, no token usuario |
 
+## Equipos y proyectos (02, implementado)
+Todas las rutas cuelgan de `/api/v1/organizations/{organization}`: sesión + CSRF (grupo `web`) y membresía activa verificada en cada petición (middleware `organization`).
+
+| Método | Ruta | Notas |
+| --- | --- | --- |
+| GET | `/teams` | Inventario según D15: `teams.manage` de organización ve todo; el resto, sus equipos y las ramas que lidera |
+| POST | `/teams` | `{name, parent_team_id?}`; `Idempotency-Key` opcional |
+| GET | `/teams/{team}` | 404 si no es visible |
+| POST | `/teams/{team}/move` | `{parent_team_id: uuid\|null}` |
+| POST | `/teams/{team}/archive` | 422 si tiene subequipos activos |
+| POST / DELETE | `/teams/{team}/members[/{membership}]` | `{membership_id, role: member\|lead}` |
+| GET | `/projects` | Filtros `status`, `type`, `confidentiality` aplicados después de la visibilidad |
+| POST | `/projects` | `{key, name, type?, confidentiality?, description?}`; throttle 10/min por usuario; `Idempotency-Key` opcional |
+| GET | `/projects/{project}` | Detalle; acceso a `restricted` por rol de organización queda auditado |
+| PATCH | `/projects/{project}` | `{expected_version, name?, description?, type?, status?, confidentiality?}`; 409 si la versión cambió |
+| POST / DELETE | `/projects/{project}/members[/{membership}]` | `{membership_id, role: member\|manager}` |
+| POST / DELETE | `/projects/{project}/teams[/{team}]` | `{team_id}`; exige gestionar proyecto y equipo |
+
+- **Paginación:** `limit` (1–100, por defecto 25) y `cursor` opaco firmado (HMAC), ligado al listado, la organización y los filtros. Respuesta `{data, next_cursor}` sin totales. Cursor editado o reutilizado con otros filtros: 422.
+- **Idempotencia:** la clave (8–200 caracteres ASCII visibles) vale por usuario y operación durante 24 h. Reutilizarla con otro cuerpo: 422. Una repetición se reautoriza antes de devolver el cuerpo guardado.
+- **Errores:** no visible, inexistente o de otra organización: 404 idéntico. Visible sin permiso: 403. Referencia inválida en el cuerpo (membresía o equipo inexistente, ajeno o archivado), validación o clave de proyecto ocupada: 422 genérico. Versión obsoleta: 409. Límite superado: 429.
+- **Throttle general:** toda escritura usa `throttle:writes` (60/min por usuario).
+- **Listados de proyectos:** owner/admin que no son miembros directos ven los `restricted` sin `description`; el detalle completo queda auditado.
+
 ## Ejemplo transición
 ```json
 { "to_status_id":"uuid", "reason":"Aprobado QA", "expected_version":12 }
