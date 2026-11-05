@@ -84,6 +84,7 @@ jobs:
           scripts/db/provision.sh test database
           scripts/db/provision.sh test sentinel
           scripts/db/provision.sh test reader
+          scripts/db/provision.sh test installation-reader
 
       - name: Migrate test database as orbixa_migrator
         run: composer test:db:migrate

@@ -8,7 +8,7 @@
 SELECT rolname, rolsuper, rolbypassrls, rolcreatedb, rolcreaterole, rolreplication, rolinherit, rolcanlogin, rolconnlimit
   FROM pg_roles WHERE rolname LIKE 'orbixa%' ORDER BY 1;
 
-\echo '== Memberships involving orbixa roles (expected: only orbixa_membership_reader -> orbixa_migrator, SET without INHERIT)'
+\echo '== Memberships involving orbixa roles (expected: only orbixa_membership_reader and orbixa_installation_reader -> orbixa_migrator, SET without INHERIT)'
 SELECT r.rolname AS role, m.rolname AS member
   FROM pg_auth_members a
   JOIN pg_roles r ON r.oid = a.roleid
