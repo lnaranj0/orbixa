@@ -1,5 +1,6 @@
 <?php
 
+use Modules\Platform\Infrastructure\Logging\RedactCredentials;
 use Monolog\Handler\NullHandler;
 use Monolog\Handler\StreamHandler;
 use Monolog\Handler\SyslogUdpHandler;
@@ -54,12 +55,14 @@ return [
 
         'stack' => [
             'driver' => 'stack',
+            'tap' => [RedactCredentials::class],
             'channels' => explode(',', (string) env('LOG_STACK', 'single')),
             'ignore_exceptions' => false,
         ],
 
         'single' => [
             'driver' => 'single',
+            'tap' => [RedactCredentials::class],
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
@@ -67,6 +70,7 @@ return [
 
         'daily' => [
             'driver' => 'daily',
+            'tap' => [RedactCredentials::class],
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => env('LOG_DAILY_DAYS', 14),
@@ -115,6 +119,7 @@ return [
 
         'syslog' => [
             'driver' => 'syslog',
+            'tap' => [RedactCredentials::class],
             'level' => env('LOG_LEVEL', 'debug'),
             'facility' => env('LOG_SYSLOG_FACILITY', LOG_USER),
             'replace_placeholders' => true,
@@ -122,6 +127,7 @@ return [
 
         'errorlog' => [
             'driver' => 'errorlog',
+            'tap' => [RedactCredentials::class],
             'level' => env('LOG_LEVEL', 'debug'),
             'replace_placeholders' => true,
         ],

@@ -1,0 +1,37 @@
+<?php
+
+return [
+
+    /*
+    |--------------------------------------------------------------------------
+    | GitHub App (06-github-integration, G10)
+    |--------------------------------------------------------------------------
+    |
+    | driver: "disabled" (default, every call fails closed), "fake" (in-memory,
+    | development and tests; refused in production) or "http" (real App).
+    |
+    | Only file paths live here, never secret values, so `config:cache` and
+    | config dumps cannot hold a secret. The files go in .secrets/ (mode 600,
+    | gitignored) or are mounted by the environment's secret manager.
+    |
+    */
+
+    'driver' => env('GITHUB_DRIVER', 'disabled'),
+
+    'app_id' => env('GITHUB_APP_ID'),
+
+    'client_id' => env('GITHUB_APP_CLIENT_ID'),
+
+    'timeout' => (int) env('GITHUB_TIMEOUT', 10),
+
+    'secrets' => [
+        'private_key' => env('GITHUB_APP_PRIVATE_KEY_PATH', base_path('.secrets/github-app.pem')),
+        'webhook' => env('GITHUB_WEBHOOK_SECRET_PATH', base_path('.secrets/github-webhook')),
+        'webhook_previous' => env('GITHUB_WEBHOOK_PREVIOUS_SECRET_PATH', base_path('.secrets/github-webhook.previous')),
+        'oauth_client' => env('GITHUB_OAUTH_CLIENT_SECRET_PATH', base_path('.secrets/github-oauth-client')),
+    ],
+
+    // Installation tokens are cached encrypted (APP_KEY) in this store.
+    'token_store' => env('GITHUB_TOKEN_STORE', 'redis'),
+
+];
