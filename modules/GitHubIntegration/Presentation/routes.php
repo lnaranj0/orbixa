@@ -7,9 +7,10 @@ use Modules\GitHubIntegration\Presentation\Http\Controllers\GitHubWebhookControl
 use Modules\IdentityTenancy\Contracts\ActiveOrganization;
 
 // Outside the "web" group on purpose: no session, cookies or CSRF. The
-// signature is the only authentication (G3).
+// signature is the only authentication (G3). The controller throttles failed
+// signatures per IP; a route throttle would also count GitHub's own
+// deliveries, shared by every customer, and let anyone exhaust it.
 Route::post('/webhooks/github', GitHubWebhookController::class)
-    ->middleware('throttle:github-webhooks')
     ->name('webhooks.github');
 
 // The App's fixed setup URL: the organization comes from the session-bound

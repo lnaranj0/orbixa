@@ -43,7 +43,7 @@ Decisiones G-A…G-F y G1–G12 aprobadas el 2026-11-04. Las propusieron los age
   - El `state` también va ligado al usuario. El callback no usa el middleware `auth`: un invitado va al login sin guardar la URL (y su `code`) como `url.intended`. La respuesta lleva `Referrer-Policy: no-referrer` y nginx debe excluir del access log la query de `/integrations/github/callback`.
   - Cualquier petición al callback consume el `state` pendiente: un tercero solo puede cancelar un setup en curso, nunca vincular nada.
   - El token OAuth del usuario no se revoca tras usarlo (sería una escritura en GitHub, G9): no se guarda y caduca solo.
-  - Setup y callback tienen su propio límite (5 por minuto por usuario y 20 por hora por organización), porque cada setup completo hace unas 20 llamadas a GitHub, algunas sobre la cuota de la App compartida por todas las organizaciones.
+  - Setup y callback tienen su propio límite (5 por minuto y 20 por hora, por usuario: un límite por organización lo podría agotar cualquier miembro, incluso sin permiso), porque cada setup completo hace unas 20 llamadas a GitHub, algunas sobre la cuota de la App compartida por todas las organizaciones.
   - Un repositorio que deja de estar disponible conserva su selección como historial; el webhook (y la indexación de 06b) exigen `available` y la instalación activa.
 - Los repositorios llegan como "disponibles" y solo se indexan los que una persona con `integrations.github.manage` **selecciona** de forma explícita. Se identifican por su id numérico, nunca por el nombre, que cambia al renombrar o transferir.
 
@@ -52,7 +52,8 @@ Decisiones G-A…G-F y G1–G12 aprobadas el 2026-11-04. Las propusieron los age
 - El tamaño se comprueba con la cabecera antes de leer el cuerpo, y la lectura se corta en el límite: por encima, 413. El límite real se fija también en nginx (`client_max_body_size` para `/webhooks/github`) y en `post_max_size`.
 - La firma `X-Hub-Signature-256` se verifica sobre los bytes crudos con `hash_equals` **antes** de que Orbixa interprete el payload. Se acepta el secreto actual y el anterior, para poder rotarlo. Firma ausente, mal formada o incorrecta: 401 sin detalles.
   - Laravel decodifica una vez el JSON al capturar cualquier petición (`Request::createFromBase`), antes de los middleware. Se acepta (decisión del 2026-11-05): profundidad 512, falla en silencio y el tamaño queda limitado por nginx. La ruta se excluye de `TrimStrings` y `ConvertEmptyStringsToNull` para evitar su recorrido recursivo.
-- El throttle es por IP. De momento hay solo nginx local, sin balanceador: si se añade uno, hay que configurar `trustProxies` con sus IPs antes de exponer la ruta.
+- Solo se limitan por IP las firmas fallidas (60 por minuto). Las entregas firmadas no se limitan en la aplicación: GitHub envía los webhooks de todos sus clientes desde unas pocas IP compartidas, y un límite por IP lo podría agotar cualquiera con un webhook propio (revisión global, M1). El tope bruto de peticiones lo pone nginx. De momento hay solo nginx local, sin balanceador: si se añade uno, hay que configurar `trustProxies` con sus IPs.
+- `GITHUB_WEBHOOKS_ENABLED` (apagado por defecto) es el interruptor de la ruta: 503 sin leer nada. Sigue apagado hasta 06b, que procesa el inbox y purga los payloads a los 30 días; sin eso se guardarían payloads de repos privados sin retención (revisión global, M2).
 - Deduplicación en un registro **global** `integrations.webhook_deliveries` sin payload, organización ni instalación (el id de instalación identifica a una organización): `delivery_id` único, hash del cuerpo único, evento y resultado. El runtime solo tiene `INSERT` (`ON CONFLICT DO NOTHING`), no lo puede leer.
   - El registro y la fila del inbox se escriben en la misma transacción.
   - Las cabeceras de evento y de entrega no van firmadas: el registro es la protección anti-replay y **no se purga** por debajo de esa ventana.
@@ -88,7 +89,7 @@ Decisiones G-A…G-F y G1–G12 aprobadas el 2026-11-04. Las propusieron los age
 - Sin App real en desarrollo: GitHub queda detrás del puerto `GitHubApi`, probado con un fake y fixtures firmadas.
 
 ## Eventos (G11)
-`github.installation.connected`, `github.installation.revoked`, `github.repository.linked`, `github.pull_request.updated`, `github.commit.linked` y `github.sync.failed`, con solo IDs y `correlation_id` igual al `delivery_id`. Revocar o suspender una instalación detiene la indexación; los vínculos se conservan como historial.
+`github.installation.connected`, `github.installation.revoked`, `github.repository.selected`, `github.repository.deselected`, `github.repository.linked`, `github.pull_request.updated`, `github.commit.linked` y `github.sync.failed`, con solo IDs y `correlation_id` igual al `delivery_id`. Revocar o suspender una instalación detiene la indexación; los vínculos se conservan como historial.
 
 ## API y pantallas (G12)
 - Bajo `/api/v1/organizations/{organization}/integrations/github`: setup, repositorios (seleccionar o retirar), vínculos a proyecto, `reconcile` y `sync-runs`, con `integrations.github.manage`.
@@ -112,6 +113,14 @@ Decisiones G-A…G-F y G1–G12 aprobadas el 2026-11-04. Las propusieron los age
 11. API, pantallas, revisión de seguridad, documentación y CI.
 
 ## Riesgos y decisiones pendientes
+- Pendiente para 06b (revisiones de cierre de 06a):
+  - El recorder del outbox debe derivar el actor del contexto activo (`service` / `integration:github:<id>` dentro de `runForIntegration`), en lugar de aceptar cualquier `ActorReference`.
+  - Los jobs deben bloquear la instalación (`FOR SHARE`) dentro del contexto: la comprobación de instalación activa no bloquea, y una revocación concurrente no detendría una unidad de trabajo ya verificada.
+  - Capa deptrac `WorkIntegrationContracts` (G6) antes de usar Work desde GitHubIntegration.
+  - Invalidar `InstallationTokenCache` al suspender o revocar. El token da acceso a toda la instalación: la selección de repositorios se aplica en el código.
+  - Decidir si volver a vincular reactiva una instalación revocada localmente y si actualiza `linked_by_membership_id`.
+  - Retención de `webhook_deliveries` y quién la purga, sin romper la ventana anti-replay; purga del payload del inbox; índices de estado del consumidor.
+  - Los objetos de excepción del contexto de log no pasan por el redactor (se formatean después): las excepciones propias nunca llevan credenciales y los parámetros sensibles usan `#[\SensitiveParameter]`.
 - G-A y G-B amplían la superficie entre organizaciones: hace falta revisión explícita y pruebas con el rol runtime real.
 - El `UNIQUE` global de la instalación delata que existe en otra organización; se responde con un error genérico.
 - Sin App real, la compatibilidad con GitHub solo queda validada con fixtures, hasta una prueba manual con una App de desarrollo.

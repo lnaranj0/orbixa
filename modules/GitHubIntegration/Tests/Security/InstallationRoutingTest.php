@@ -2,6 +2,7 @@
 
 namespace Modules\GitHubIntegration\Tests\Security;
 
+use Illuminate\Database\Connection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Modules\GitHubIntegration\Infrastructure\InstallationRouter;
@@ -12,6 +13,7 @@ use Modules\Platform\Contracts\Tenancy\OrganizationId;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
 use Modules\Platform\Contracts\Tenancy\TenantContext;
 use Modules\Platform\Contracts\Tenancy\TenantContextViolation;
+use Modules\Platform\Infrastructure\Database\PostgresRoles;
 use Modules\Platform\Tests\Security\SecurityTestCase;
 
 /**
@@ -21,6 +23,8 @@ use Modules\Platform\Tests\Security\SecurityTestCase;
  */
 final class InstallationRoutingTest extends SecurityTestCase
 {
+    private const SETTING = 'app.organization_id';
+
     private TenantContext $tenant;
 
     private User $owner;
@@ -82,6 +86,39 @@ final class InstallationRoutingTest extends SecurityTestCase
         // Never nested inside a human context.
         $this->expectException(TenantContextViolation::class);
         $this->tenant->runFor($this->owner, $this->organization, fn () => $this->tenant->runForIntegration($principal, $this->organization, fn () => null));
+    }
+
+    public function test_runtime_cannot_assume_the_installation_reader_or_alter_the_router(): void
+    {
+        $reader = PostgresRoles::installationReader();
+
+        $this->assertFalse(DB::selectOne("select pg_has_role(current_user, ?, 'MEMBER') as member", [$reader])->member);
+        $this->assertSqlState('42501', fn (Connection $connection) => $connection->statement("set role {$reader}"));
+        $this->assertSqlState('42501', fn (Connection $connection) => $connection->statement('alter function integrations.organization_for_installation(bigint) security invoker'));
+        $this->assertSqlState('42501', fn (Connection $connection) => $connection->statement(
+            'create or replace function integrations.organization_for_installation(p_installation_external_id bigint) returns uuid language sql as $$ select null::uuid $$'
+        ));
+
+        $role = DB::selectOne('select rolcanlogin, rolsuper, rolbypassrls, rolinherit, rolcreaterole, rolcreatedb from pg_roles where rolname = ?', [$reader]);
+        $this->assertSame([false, false, false, false, false, false], [$role->rolcanlogin, $role->rolsuper, $role->rolbypassrls, $role->rolinherit, $role->rolcreaterole, $role->rolcreatedb]);
+    }
+
+    public function test_integration_context_is_cleared_when_the_callback_fails(): void
+    {
+        $principal = IntegrationPrincipal::github($this->installation('active'));
+
+        // Inside an outer transaction (savepoint): the GUC is rolled back with it.
+        DB::transaction(function () use ($principal) {
+            try {
+                $this->tenant->runForIntegration($principal, $this->organization, fn () => throw new \RuntimeException('boom'));
+                $this->fail('Expected the callback exception.');
+            } catch (\RuntimeException) {
+            }
+            $this->assertNull($this->tenant->current());
+            $this->assertSame('', (string) DB::selectOne('select current_setting(?, true) as value', [self::SETTING])->value);
+            $this->assertSame(0, (int) DB::selectOne('select count(*) as total from integrations.github_installations')->total);
+        });
+        $this->assertNull($this->tenant->current());
     }
 
     private function installation(string $status): int

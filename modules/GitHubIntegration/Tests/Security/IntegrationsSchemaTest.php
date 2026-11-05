@@ -70,6 +70,21 @@ final class IntegrationsSchemaTest extends SecurityTestCase
             );
             $link(DB::connection());
             $this->assertSqlState('23505', $link);
+
+            // A link is unlinked once and never reopened or rewritten.
+            $linkId = (string) DB::selectOne('select id::text as id from integrations.repository_project_links where repository_id = ? and project_id = ?', [$repository, $project])->id;
+            $this->assertSqlState('23514', fn (Connection $db) => $db->update(
+                "update integrations.repository_project_links set unlinked_at = linked_at - interval '1 day', unlinked_by_membership_id = ? where id = ?", [$owner, $linkId]
+            ));
+            DB::update('update integrations.repository_project_links set unlinked_at = now(), unlinked_by_membership_id = ? where id = ?', [$owner, $linkId]);
+            $this->assertSqlState('23514', fn (Connection $db) => $db->update(
+                'update integrations.repository_project_links set unlinked_at = null, unlinked_by_membership_id = null where id = ?', [$linkId]
+            ));
+            $this->assertSqlState('23514', fn (Connection $db) => $db->update(
+                'update integrations.repository_project_links set unlinked_at = now() + interval \'1 hour\' where id = ?', [$linkId]
+            ));
+            // Once unlinked, the pair can be linked again as a new row.
+            $link(DB::connection());
             $this->assertSqlState('23503', fn (Connection $db) => $db->insert(
                 'insert into integrations.repository_project_links (organization_id, repository_id, project_id, linked_by_membership_id)
                  values (platform.current_organization_id(), ?, ?, ?)',
@@ -85,6 +100,10 @@ final class IntegrationsSchemaTest extends SecurityTestCase
             $this->assertSqlState('23505', fn (Connection $db) => $inbox($db, 'd-1'));
             $this->assertSqlState('23514', fn (Connection $db) => $inbox($db, 'bad id!'));
             $this->assertSqlState('23514', fn (Connection $db) => $inbox($db, 'd-2', '[]'));
+            $this->assertSqlState('23514', fn (Connection $db) => $db->update(
+                "update integrations.webhook_inbox set payload_purged_at = now() where delivery_id = 'd-1'"
+            ));
+            DB::update("update integrations.webhook_inbox set payload = '{}'::jsonb, payload_purged_at = now() where delivery_id = 'd-1'");
 
             foreach (['github_installations', 'github_repositories', 'repository_project_links', 'webhook_inbox'] as $table) {
                 $this->assertSqlState('42501', fn (Connection $db) => $db->delete("delete from integrations.{$table}"));

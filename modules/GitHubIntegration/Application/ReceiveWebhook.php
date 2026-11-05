@@ -48,7 +48,8 @@ final class ReceiveWebhook
         $organization = $handled && $installationExternalId !== null ? $this->router->organizationFor($installationExternalId) : null;
         // jsonb rejects \u0000 although PHP accepts it: storing such a payload
         // would fail on every redelivery, so it is ignored up front.
-        if ($organization === null || str_contains($body, '\\u0000')) {
+        // An escaped NUL is \u0000 preceded by an even number of backslashes.
+        if ($organization === null || preg_match('/(?<!\\\\)(?:\\\\\\\\)*\\\\u0000/', $body) === 1) {
             return $this->ignore($deliveryId, $hash, $event);
         }
 

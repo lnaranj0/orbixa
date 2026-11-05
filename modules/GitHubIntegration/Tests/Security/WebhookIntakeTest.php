@@ -38,7 +38,7 @@ final class WebhookIntakeTest extends SecurityTestCase
     {
         parent::setUp();
         $this->secrets = new GitHubSecretsFixture;
-        config(['github.secrets' => $this->secrets->paths()]);
+        config(['github.secrets' => $this->secrets->paths(), 'github.webhooks_enabled' => true]);
         $this->tenant = $this->app->make(TenantContext::class);
         $this->owner = User::factory()->create(['email' => Str::uuid().'@example.test']);
         $this->organization = $this->app->make(CreateOrganization::class)->handle($this->owner, 'Webhook Inc');
@@ -147,6 +147,9 @@ final class WebhookIntakeTest extends SecurityTestCase
         $this->deliver('{"action":"opened","installation":{"id":'.$this->installation.'},"repository":{"id":'.$this->selectedRepository.'},"title":"a\\u0000b"}', $delivery = $this->deliveryId())
             ->assertStatus(202)->assertExactJson(['status' => 'ignored']);
         $this->assertInboxHas($delivery, false, 'NUL escape');
+        // An escaped backslash followed by "u0000" is ordinary text.
+        $this->deliver('{"action":"opened","installation":{"id":'.$this->installation.'},"repository":{"id":'.$this->selectedRepository.'},"title":"a\\\\u0000b"}', $delivery = $this->deliveryId())
+            ->assertExactJson(['status' => 'accepted']);
 
         $this->deliver($this->payload($this->selectedRepository), $delivery = $this->deliveryId(), event: 'issues')
             ->assertExactJson(['status' => 'ignored']);
@@ -231,12 +234,26 @@ final class WebhookIntakeTest extends SecurityTestCase
         $this->deliver($this->payload($this->selectedRepository), $this->deliveryId())->assertStatus(503)->assertContent('');
     }
 
-    public function test_deliveries_are_throttled_per_source_address(): void
+    public function test_only_failed_signatures_are_throttled_per_source_address(): void
     {
-        config(['github.webhook_rate_per_minute' => 2]);
+        config(['github.webhook_failures_per_minute' => 2]);
         $this->deliver('{}', $this->deliveryId(), signature: false)->assertStatus(401);
         $this->deliver('{}', $this->deliveryId(), signature: false)->assertStatus(401);
         $this->deliver('{}', $this->deliveryId(), signature: false)->assertStatus(429);
+
+        // Signed deliveries from other addresses keep flowing; GitHub's own
+        // traffic is never throttled by the app.
+        config(['github.webhook_failures_per_minute' => 100]);
+        for ($i = 0; $i < 5; $i++) {
+            $this->deliver($this->payload($this->selectedRepository), $this->deliveryId())->assertStatus(202);
+        }
+    }
+
+    public function test_the_kill_switch_stores_nothing(): void
+    {
+        config(['github.webhooks_enabled' => false]);
+        $this->deliver($this->payload($this->selectedRepository), $delivery = $this->deliveryId())->assertStatus(503)->assertContent('');
+        $this->assertDelivery($delivery, null);
     }
 
     /**

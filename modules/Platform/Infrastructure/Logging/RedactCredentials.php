@@ -20,7 +20,7 @@ final class RedactCredentials
         '/-----BEGIN [A-Z ]*PRIVATE KEY-----.*?(-----END [A-Z ]*PRIVATE KEY-----|$)/s' => self::MASK,
         '/\b(authorization|proxy-authorization)\b(["\']?\s*[:=]\s*["\']?)[^\r\n"\',}]+/i' => '$1$2'.self::MASK,
         '/\b(bearer)\s+[A-Za-z0-9._~+\/=-]{8,}/i' => '$1 '.self::MASK,
-        '/\bgh[opsuR]_[A-Za-z0-9]{20,}\b/' => self::MASK,
+        '/\bgh[opsuR]_[A-Za-z0-9]{6,}/' => self::MASK,
         '/\bgithub_pat_[A-Za-z0-9_]{20,}\b/' => self::MASK,
         '/\beyJ[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]+/' => self::MASK,
     ];

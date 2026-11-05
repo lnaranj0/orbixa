@@ -79,6 +79,7 @@ return [
 
         'monthly' => [
             'driver' => 'monthly',
+            'tap' => [RedactCredentials::class],
             'path' => storage_path('logs/laravel.log'),
             'level' => env('LOG_LEVEL', 'debug'),
             'max_files' => 3,
@@ -87,6 +88,7 @@ return [
 
         'slack' => [
             'driver' => 'slack',
+            'tap' => [RedactCredentials::class],
             'url' => env('LOG_SLACK_WEBHOOK_URL'),
             'username' => env('LOG_SLACK_USERNAME', env('APP_NAME', 'Laravel')),
             'emoji' => env('LOG_SLACK_EMOJI', ':boom:'),
@@ -96,6 +98,7 @@ return [
 
         'papertrail' => [
             'driver' => 'monolog',
+            'tap' => [RedactCredentials::class],
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => env('LOG_PAPERTRAIL_HANDLER', SyslogUdpHandler::class),
             'handler_with' => [
@@ -108,6 +111,7 @@ return [
 
         'stderr' => [
             'driver' => 'monolog',
+            'tap' => [RedactCredentials::class],
             'level' => env('LOG_LEVEL', 'debug'),
             'handler' => StreamHandler::class,
             'handler_with' => [

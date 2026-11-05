@@ -82,7 +82,7 @@ final class ManageRepositories
                from integrations.github_repositories r
                join integrations.github_installations i on i.organization_id = r.organization_id and i.id = r.installation_id
               where r.id = ?
-              for update of r',
+              for no key update of r',
             [$repositoryId]
         ) : null;
 

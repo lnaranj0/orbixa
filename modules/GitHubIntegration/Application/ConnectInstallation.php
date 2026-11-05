@@ -103,10 +103,27 @@ final class ConnectInstallation
         $membershipId = $this->permission->require($actor);
         $login = mb_substr($installation->accountLogin, 0, 100);
 
-        $existing = $this->db->selectOne(
-            'select id::text as id, status from integrations.github_installations where installation_external_id = ? for update',
-            [$installation->id]
-        );
+        // FOR NO KEY UPDATE: serializes concurrent setups without blocking
+        // webhook inserts whose foreign keys take FOR KEY SHARE on this row.
+        $existing = $this->lockExisting($installation->id);
+        if ($existing === null) {
+            // A row of another organization is invisible here but still
+            // conflicts on the global unique key: nothing is inserted.
+            $inserted = $this->db->selectOne(
+                'insert into integrations.github_installations (organization_id, installation_external_id, account_login, account_type, linked_by_membership_id)
+                 values (platform.current_organization_id(), ?, ?, ?, ?)
+                 on conflict (installation_external_id) do nothing
+                 returning id::text as id',
+                [$installation->id, $login, $installation->accountType, $membershipId]
+            );
+            if ($inserted !== null) {
+                $id = (string) $inserted->id;
+                $connected = true;
+            } else {
+                // A concurrent setup of this same organization won the race (double callback).
+                $existing = $this->lockExisting($installation->id) ?? throw InstallationRejected::make();
+            }
+        }
         if ($existing !== null) {
             $id = (string) $existing->id;
             $this->db->update(
@@ -118,21 +135,6 @@ final class ConnectInstallation
                 [$login, $id]
             );
             $connected = $existing->status !== 'active';
-        } else {
-            // A row of another organization is invisible here but still
-            // conflicts on the global unique key: nothing is inserted.
-            $inserted = $this->db->selectOne(
-                'insert into integrations.github_installations (organization_id, installation_external_id, account_login, account_type, linked_by_membership_id)
-                 values (platform.current_organization_id(), ?, ?, ?, ?)
-                 on conflict (installation_external_id) do nothing
-                 returning id::text as id',
-                [$installation->id, $login, $installation->accountType, $membershipId]
-            );
-            if ($inserted === null) {
-                throw InstallationRejected::make();
-            }
-            $id = (string) $inserted->id;
-            $connected = true;
         }
 
         $this->refreshRepositories($id, $repositories, $complete);
@@ -146,21 +148,37 @@ final class ConnectInstallation
         return $id;
     }
 
+    private function lockExisting(int $installationExternalId): ?\stdClass
+    {
+        $row = $this->db->selectOne(
+            'select id::text as id, status from integrations.github_installations where installation_external_id = ? for no key update',
+            [$installationExternalId]
+        );
+
+        return $row instanceof \stdClass ? $row : null;
+    }
+
     /** @param list<GitHubRepository> $repositories */
     private function refreshRepositories(string $installationId, array $repositories, bool $complete): void
     {
-        foreach ($repositories as $repository) {
-            if ($repository->id <= 0 || strlen($repository->fullName) < 3 || strlen($repository->fullName) > 200) {
-                continue;
-            }
-            $this->db->insert(
-                'insert into integrations.github_repositories (organization_id, installation_id, repository_external_id, full_name, is_private)
-                 values (platform.current_organization_id(), ?, ?, ?, ?)
-                 on conflict (organization_id, installation_id, repository_external_id)
-                 do update set full_name = excluded.full_name, is_private = excluded.is_private, available = true, updated_at = now()',
-                [$installationId, $repository->id, $repository->fullName, $repository->private]
-            );
-        }
+        $valid = array_values(array_filter(
+            $repositories,
+            fn (GitHubRepository $repository) => $repository->id > 0 && strlen($repository->fullName) >= 3 && strlen($repository->fullName) <= 200,
+        ));
+        // One statement for the whole list; unchanged rows are not rewritten.
+        $this->db->insert(
+            'insert into integrations.github_repositories (organization_id, installation_id, repository_external_id, full_name, is_private)
+             select platform.current_organization_id(), ?, r.id, r.full_name, r.private
+               from jsonb_to_recordset(?::jsonb) as r (id bigint, full_name text, private boolean)
+             on conflict (organization_id, installation_id, repository_external_id)
+             do update set full_name = excluded.full_name, is_private = excluded.is_private, available = true, updated_at = now()
+              where (github_repositories.full_name, github_repositories.is_private, github_repositories.available)
+                    is distinct from (excluded.full_name, excluded.is_private, true)',
+            [$installationId, json_encode(array_map(
+                fn (GitHubRepository $repository) => ['id' => $repository->id, 'full_name' => $repository->fullName, 'private' => $repository->private],
+                $valid,
+            ), JSON_THROW_ON_ERROR)]
+        );
         if ($complete) {
             // Removed from the installation on GitHub: kept as history, no longer indexed.
             $ids = array_map(fn (GitHubRepository $repository) => $repository->id, $repositories);

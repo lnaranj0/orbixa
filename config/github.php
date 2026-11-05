@@ -36,13 +36,20 @@ return [
         'oauth_client' => env('GITHUB_OAUTH_CLIENT_SECRET_PATH', base_path('.secrets/github-oauth-client')),
     ],
 
+    // Kill switch for POST /webhooks/github (503 when off). Off by default
+    // until the inbox is processed and purged (06b): no private payload is
+    // stored without its retention.
+    'webhooks_enabled' => (bool) env('GITHUB_WEBHOOKS_ENABLED', false),
+
     // GitHub caps webhook payloads at 25 MB; larger bodies get 413 unread.
     'webhook_max_bytes' => (int) env('GITHUB_WEBHOOK_MAX_BYTES', 25 * 1024 * 1024),
 
-    // Per source IP; GitHub delivers from a small set of addresses.
-    'webhook_rate_per_minute' => (int) env('GITHUB_WEBHOOK_RATE_PER_MINUTE', 600),
+    // Failed signatures per source IP and minute. Signed deliveries are not
+    // throttled here: GitHub sends every customer's webhooks from a few
+    // shared addresses (the raw request rate is capped by nginx).
+    'webhook_failures_per_minute' => (int) env('GITHUB_WEBHOOK_FAILURES_PER_MINUTE', 60),
 
-    // Setup start + callback, per user per minute and per organization per hour.
+    // Setup start + callback, per user per minute and per hour.
     'setup_per_minute' => (int) env('GITHUB_SETUP_PER_MINUTE', 5),
     'setup_per_hour' => (int) env('GITHUB_SETUP_PER_HOUR', 20),
 

@@ -29,6 +29,13 @@ final class GitHubWebhookController
 
     public function __invoke(Request $request): Response|JsonResponse
     {
+        if (! $this->config->get('github.webhooks_enabled')) {
+            return response()->noContent(503);
+        }
+        $failures = 'github-webhook-signature:'.$request->ip();
+        if (RateLimiter::tooManyAttempts($failures, (int) $this->config->get('github.webhook_failures_per_minute', 60))) {
+            return response()->noContent(429);
+        }
         $max = (int) $this->config->get('github.webhook_max_bytes');
         $declared = $request->headers->get('Content-Length');
         if ($declared !== null && (! ctype_digit($declared) || (int) $declared > $max)) {
@@ -49,6 +56,8 @@ final class GitHubWebhookController
             return response()->noContent(503);
         }
         if (! $signed) {
+            RateLimiter::hit($failures, 60);
+
             return response()->noContent(401);
         }
 

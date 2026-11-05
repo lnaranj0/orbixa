@@ -57,14 +57,14 @@ final class GitHubIntegrationServiceProvider extends ServiceProvider
         // shared by every organization: a tighter budget than throttle:writes.
         RateLimiter::for('github-setup', function (Request $request): array {
             $by = $request->user() !== null ? 'user:'.$request->user()->getAuthIdentifier() : 'ip:'.$request->ip();
-            $organization = $request->route('organization');
 
+            // Per user only: a per-organization budget could be spent by any
+            // member, even one who may not manage the integration.
             return [
                 Limit::perMinute((int) config('github.setup_per_minute', 5))->by('github-setup:'.$by),
-                Limit::perHour((int) config('github.setup_per_hour', 20))->by('github-setup-hour:'.(is_string($organization) ? 'org:'.$organization : $by)),
+                Limit::perHour((int) config('github.setup_per_hour', 20))->by('github-setup-hour:'.$by),
             ];
         });
-        RateLimiter::for('github-webhooks', fn (Request $request) => Limit::perMinute((int) config('github.webhook_rate_per_minute', 600))->by('ip:'.$request->ip()));
     }
 
     private function httpApi(Application $app, Config $config): HttpGitHubApi
