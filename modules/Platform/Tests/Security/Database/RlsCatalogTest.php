@@ -23,6 +23,8 @@ final class RlsCatalogTest extends SecurityTestCase
         'public.jobs',
         'public.job_batches',
         'public.failed_jobs',
+        // 06 G3: webhook dedup register, no payload and no organization.
+        'integrations.webhook_deliveries',
     ];
 
     /**
@@ -32,6 +34,10 @@ final class RlsCatalogTest extends SecurityTestCase
      * @var array<string, array<string, array{string, string, string, string|null}>>
      */
     private const REVIEWED_EXTRA_POLICIES = [
+        // 06 G-A: the NOLOGIN owner of the webhook router sees active installations only.
+        'integrations.github_installations' => [
+            'installation_reader_read' => ['SELECT', 'orbixa_installation_reader', "(status='active'::text)", null],
+        ],
         'events.domain_outbox' => [
             'relay_read' => ['SELECT', 'orbixa_relay', 'true', null],
             'relay_mark_published' => ['UPDATE', 'orbixa_relay', '(published_atISNULL)', 'true'],
@@ -58,6 +64,8 @@ final class RlsCatalogTest extends SecurityTestCase
         'identity.has_active_membership(uuid,uuid)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
         'identity.organizations_for_user(uuid)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
         'identity.admissible_invitation(bytea,uuid,text)' => ['orbixa_membership_reader', '{"search_path=pg_catalog, pg_temp"}'],
+        // 06 G-A: routes a webhook installation to its organization (active only).
+        'integrations.organization_for_installation(bigint)' => ['orbixa_installation_reader', '{"search_path=pg_catalog, pg_temp"}'],
     ];
 
     public function test_every_tenant_table_follows_the_rls_template(): void

@@ -8,7 +8,7 @@
 SELECT rolname, rolsuper, rolbypassrls, rolcreatedb, rolcreaterole, rolreplication, rolinherit, rolcanlogin, rolconnlimit
   FROM pg_roles WHERE rolname LIKE 'orbixa%' ORDER BY 1;
 
-\echo '== Memberships involving orbixa roles (expected: only orbixa_membership_reader -> orbixa_migrator, SET without INHERIT)'
+\echo '== Memberships involving orbixa roles (expected: only orbixa_membership_reader and orbixa_installation_reader -> orbixa_migrator, SET without INHERIT)'
 SELECT r.rolname AS role, m.rolname AS member
   FROM pg_auth_members a
   JOIN pg_roles r ON r.oid = a.roleid
@@ -65,6 +65,20 @@ SELECT datname, pg_get_userbyid(datdba) AS owner, datacl, shobj_description(oid,
 \echo '== Functions in platform (prosecdef must be f)'
 SELECT p.oid::regprocedure, pg_get_userbyid(p.proowner) AS owner, p.prosecdef, p.proconfig, p.proacl
   FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace WHERE n.nspname = 'platform';
+
+\echo '== SECURITY DEFINER functions (expected: exactly the reviewed ones in RlsCatalogTest, each owned by a NOLOGIN reader, fixed search_path, EXECUTE only for orbixa_app)'
+SELECT p.oid::regprocedure, pg_get_userbyid(p.proowner) AS owner, p.proconfig, p.proacl
+  FROM pg_proc p JOIN pg_namespace n ON n.oid = p.pronamespace
+ WHERE p.prosecdef AND n.nspname NOT IN ('pg_catalog', 'information_schema')
+ ORDER BY 1::text;
+
+\echo '== Column privileges of the runtime and the NOLOGIN readers'
+SELECT grantee, table_schema, table_name, privilege_type, string_agg(column_name, ', ' ORDER BY column_name) AS columns
+  FROM information_schema.column_privileges
+ WHERE grantee IN ('orbixa_app', 'orbixa_membership_reader', 'orbixa_installation_reader')
+   AND table_schema NOT IN ('pg_catalog', 'information_schema')
+ GROUP BY 1, 2, 3, 4
+ ORDER BY 1, 2, 3, 4;
 
 \echo '== Default ACLs'
 SELECT pg_get_userbyid(defaclrole) AS role, defaclnamespace::regnamespace AS schema, defaclobjtype, defaclacl FROM pg_default_acl;

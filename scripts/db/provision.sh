@@ -3,13 +3,14 @@
 # `docker compose exec` as orbixa_bootstrap. Every step is explicit, so each
 # sensitive operation can be reviewed and approved on its own.
 #
-# Usage: scripts/db/provision.sh <dev|test> <roles|database|transfer|sentinel|reader|verify>
+# Usage: scripts/db/provision.sh <dev|test> <roles|database|transfer|sentinel|reader|installation-reader|verify>
 #
 #   roles     01_roles.sql            create/re-assert orbixa_migrator, orbixa_app
 #   database  02_database.sql         database/schema privileges and role settings
 #   transfer  03_transfer_...sql      dev only: move the 9 existing tables to the migrator
 #   sentinel  04_test_sentinel.sql    test only: mark orbixa_test as ephemeral
 #   reader    05_membership_reader.sql NOLOGIN owner of membership functions (01)
+#   installation-reader  06_installation_reader.sql NOLOGIN owner of the GitHub webhook router (06)
 #   verify    90_verify.sql           read-only catalog report
 #
 # Passwords for the roles step are read from ORBIXA_MIGRATOR_PASSWORD,
@@ -23,7 +24,7 @@
 set -euo pipefail
 
 usage() {
-    sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'
+    sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'
     exit 64
 }
 
@@ -93,6 +94,9 @@ case "$step" in
         ;;
     reader)
         run_sql 05_membership_reader.sql
+        ;;
+    installation-reader)
+        run_sql 06_installation_reader.sql
         ;;
     verify)
         run_sql 90_verify.sql

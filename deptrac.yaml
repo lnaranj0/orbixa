@@ -177,6 +177,19 @@ deptrac:
           must_not:
             - type: classLike
               value: '^Modules\\Reporting\\Contracts\\'
+    - name: GitHubIntegrationContracts
+      collectors:
+        - type: classLike
+          value: '^Modules\\GitHubIntegration\\Contracts\\'
+    - name: GitHubIntegrationInternals
+      collectors:
+        - type: bool
+          must:
+            - type: classLike
+              value: '^Modules\\GitHubIntegration\\'
+          must_not:
+            - type: classLike
+              value: '^Modules\\GitHubIntegration\\Contracts\\'
     - name: AuditContracts
       collectors:
         - type: classLike
@@ -203,6 +216,7 @@ deptrac:
       - WorkflowContracts
       - PlanningContracts
       - ReportingContracts
+      - GitHubIntegrationContracts
     PlatformContracts: ~
     PlatformInternals:
       - PlatformContracts
@@ -296,6 +310,15 @@ deptrac:
       - ReportingContracts
       - WorkContracts
       - IdentityTenancyContracts
+      - PlatformContracts
+    GitHubIntegrationContracts:
+      - PlatformContracts
+    GitHubIntegrationInternals:
+      - GitHubIntegrationContracts
+      - WorkContracts
+      - PortfolioContracts
+      - IdentityTenancyContracts
+      - AccessContracts
       - PlatformContracts
     AuditContracts:
       - PlatformContracts

@@ -9,6 +9,8 @@ use Illuminate\Database\DatabaseManager;
 use Illuminate\Support\Str;
 use Modules\Platform\Contracts\Tenancy\AdmissionTicket;
 use Modules\Platform\Contracts\Tenancy\AdmissionVerifier;
+use Modules\Platform\Contracts\Tenancy\IntegrationPrincipal;
+use Modules\Platform\Contracts\Tenancy\IntegrationVerifier;
 use Modules\Platform\Contracts\Tenancy\MembershipVerifier;
 use Modules\Platform\Contracts\Tenancy\OrganizationId;
 use Modules\Platform\Contracts\Tenancy\TenantAccessDenied;
@@ -36,6 +38,7 @@ final class PostgresTenantContext implements TenantContext
         private readonly MembershipVerifier $memberships,
         private readonly AdmissionVerifier $admissions,
         private readonly DatabaseManager $db,
+        private readonly IntegrationVerifier $integrations,
     ) {}
 
     public function current(): ?OrganizationId
@@ -70,6 +73,35 @@ final class PostgresTenantContext implements TenantContext
         $organization = OrganizationId::fromString((string) Str::uuid7());
 
         return $this->scoped($actor, $organization, fn () => null, fn () => $callback($organization), requireMembershipAfter: true);
+    }
+
+    public function runForIntegration(IntegrationPrincipal $principal, OrganizationId $organization, Closure $callback): mixed
+    {
+        $this->assertNoActiveContext();
+        $key = $principal->actorId();
+
+        $connection = $this->db->connection();
+
+        return $connection->transaction(function () use ($connection, $principal, $organization, $callback, $key) {
+            if (! $this->integrations->isActiveFor($principal, $organization)) {
+                throw TenantAccessDenied::forActor();
+            }
+
+            $this->set($connection, $organization->value);
+            $this->current = $organization;
+            $this->currentActor = $key;
+
+            try {
+                $result = $callback();
+            } finally {
+                $this->current = null;
+                $this->currentActor = null;
+            }
+
+            $this->set($connection, '');
+
+            return $result;
+        });
     }
 
     public function runForAdmission(Authenticatable $actor, OrganizationId $organization, AdmissionTicket $ticket, Closure $callback): mixed

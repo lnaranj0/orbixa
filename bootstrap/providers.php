@@ -5,6 +5,7 @@ use App\Providers\FortifyServiceProvider;
 use App\Providers\HorizonServiceProvider;
 use Modules\Access\Infrastructure\AccessServiceProvider;
 use Modules\Audit\Infrastructure\AuditServiceProvider;
+use Modules\GitHubIntegration\Infrastructure\GitHubIntegrationServiceProvider;
 use Modules\IdentityTenancy\Infrastructure\IdentityTenancyServiceProvider;
 use Modules\Monitoring\Infrastructure\MonitoringServiceProvider;
 use Modules\Planning\Infrastructure\PlanningServiceProvider;
@@ -32,4 +33,5 @@ return [
     WorkflowServiceProvider::class,
     PlanningServiceProvider::class,
     ReportingServiceProvider::class,
+    GitHubIntegrationServiceProvider::class,
 ];

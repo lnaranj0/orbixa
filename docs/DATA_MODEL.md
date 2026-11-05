@@ -8,7 +8,7 @@ Convención: claves UUID (`uuid`), instantes `timestamptz` en UTC, `organization
 | `access` | roles, permissions, role_permissions, membership_roles, service_principals |
 | `monitoring` | grants, grant_events (04, módulo Monitoring) |
 | `teams` | teams (parent_team_id), team_members, team_parent_changes |
-| `portfolio` | projects, project_members, project_team_links (02); project_repositories (06). `project_counters` pasa a 03 y los hitos a `12-project-management` |
+| `portfolio` | projects, project_members, project_team_links (02); (el vínculo repositorio→proyecto es `integrations.repository_project_links`, 06 G-D). `project_counters` pasa a 03 y los hitos a `12-project-management` |
 | `work` | items, item_types, labels, item_labels, item_comments, item_attachments, item_assignments, item_dependencies, item_events |
 | `workflow` | workflows (uno por proyecto), statuses, transitions (05). Las guardas viven como columnas de la transición; `project_workflows` compartibles quedan para más adelante |
 | `planning` | project_settings (modo), cycles (con capacidad), cycle_items (05). La pertenencia a ciclos vive aquí; `work.items` no tiene `cycle_id`. `saved_views` queda para más adelante |
