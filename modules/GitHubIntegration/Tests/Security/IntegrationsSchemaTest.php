@@ -100,7 +100,8 @@ final class IntegrationsSchemaTest extends SecurityTestCase
         $columns = array_column(DB::select(
             "select column_name from information_schema.columns where table_schema = 'integrations' and table_name = 'webhook_deliveries' order by ordinal_position"
         ), 'column_name');
-        $this->assertSame(['delivery_id', 'body_sha256', 'event', 'installation_external_id', 'outcome', 'received_at'], $columns);
+        // No installation id: it maps 1:1 to an organization (review finding 3).
+        $this->assertSame(['delivery_id', 'body_sha256', 'event', 'outcome', 'received_at'], $columns);
 
         $insert = fn (Connection $db, string $delivery, string $body) => $db->insert(
             "insert into integrations.webhook_deliveries (delivery_id, body_sha256, event, outcome) values (?, decode(?, 'hex'), 'ping', 'accepted')",
@@ -110,6 +111,7 @@ final class IntegrationsSchemaTest extends SecurityTestCase
         $body = 'body-b-'.Str::random(8);
         $insert(DB::connection(), 'g-'.Str::random(8), $body);
         $this->assertSqlState('23505', fn (Connection $db) => $insert($db, 'g-'.Str::random(8), $body)); // same body, new delivery id
+        $this->assertSqlState('42501', fn (Connection $db) => $db->select('select delivery_id from integrations.webhook_deliveries limit 1'));
         $this->assertSqlState('42501', fn (Connection $db) => $db->update("update integrations.webhook_deliveries set outcome = 'ignored'"));
         $this->assertSqlState('42501', fn (Connection $db) => $db->delete('delete from integrations.webhook_deliveries'));
     }

@@ -24,7 +24,7 @@ final class GlobalTablePrivilegesTest extends SecurityTestCase
         'job_batches' => [],
         'failed_jobs' => ['SELECT', 'INSERT', 'DELETE'],
         // 06 G3: dedup register only; insert and look up, never update or delete.
-        'integrations.webhook_deliveries' => ['SELECT', 'INSERT'],
+        'integrations.webhook_deliveries' => ['INSERT'],
     ];
 
     /** @var array<string, list<string>> */

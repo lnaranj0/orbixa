@@ -42,9 +42,15 @@ Decisiones G-A…G-F y G1–G12 aprobadas el 2026-11-04. Las propusieron los age
 
 ## Webhook (G3)
 - Ruta `POST /webhooks/github`, sin sesión, CSRF ni `auth`, con throttle por IP.
-- El tamaño se comprueba con la cabecera antes de leer el cuerpo: por encima del límite, 413.
-- La firma `X-Hub-Signature-256` se verifica sobre los bytes crudos con `hash_equals` **antes** de cualquier `json_decode`. Se acepta el secreto actual y el anterior, para poder rotarlo. Firma ausente, mal formada o incorrecta: 401 sin detalles.
-- Deduplicación en un registro **global** `integrations.webhook_deliveries` sin payload ni organización: `delivery_id` único, hash del cuerpo único, evento, acción y estado.
+- El tamaño se comprueba con la cabecera antes de leer el cuerpo, y la lectura se corta en el límite: por encima, 413. El límite real se fija también en nginx (`client_max_body_size` para `/webhooks/github`) y en `post_max_size`.
+- La firma `X-Hub-Signature-256` se verifica sobre los bytes crudos con `hash_equals` **antes** de que Orbixa interprete el payload. Se acepta el secreto actual y el anterior, para poder rotarlo. Firma ausente, mal formada o incorrecta: 401 sin detalles.
+  - Laravel decodifica una vez el JSON al capturar cualquier petición (`Request::createFromBase`), antes de los middleware. Se acepta (decisión del 2026-11-05): profundidad 512, falla en silencio y el tamaño queda limitado por nginx. La ruta se excluye de `TrimStrings` y `ConvertEmptyStringsToNull` para evitar su recorrido recursivo.
+- El throttle es por IP. De momento hay solo nginx local, sin balanceador: si se añade uno, hay que configurar `trustProxies` con sus IPs antes de exponer la ruta.
+- Deduplicación en un registro **global** `integrations.webhook_deliveries` sin payload, organización ni instalación (el id de instalación identifica a una organización): `delivery_id` único, hash del cuerpo único, evento y resultado. El runtime solo tiene `INSERT` (`ON CONFLICT DO NOTHING`), no lo puede leer.
+  - El registro y la fila del inbox se escriben en la misma transacción.
+  - Las cabeceras de evento y de entrega no van firmadas: el registro es la protección anti-replay y **no se purga** por debajo de esa ventana.
+  - Una entrega ignorada (antes de vincular la instalación o seleccionar el repositorio) será `duplicate` si GitHub la reenvía; esos cambios los recupera la reconciliación.
+  - Un payload que `jsonb` no admite (`\u0000`) se registra como ignorado. Los fallos de BD se reportan solo con el SQLSTATE, nunca con el cuerpo.
   - Mismo `delivery_id`: 200.
   - Mismo cuerpo con un `delivery_id` nuevo: 200.
   - Además, idempotencia de dominio con `last_synced_version`.

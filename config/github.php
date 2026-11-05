@@ -31,6 +31,12 @@ return [
         'oauth_client' => env('GITHUB_OAUTH_CLIENT_SECRET_PATH', base_path('.secrets/github-oauth-client')),
     ],
 
+    // GitHub caps webhook payloads at 25 MB; larger bodies get 413 unread.
+    'webhook_max_bytes' => (int) env('GITHUB_WEBHOOK_MAX_BYTES', 25 * 1024 * 1024),
+
+    // Per source IP; GitHub delivers from a small set of addresses.
+    'webhook_rate_per_minute' => (int) env('GITHUB_WEBHOOK_RATE_PER_MINUTE', 600),
+
     // Installation tokens are cached encrypted (APP_KEY) in this store.
     'token_store' => env('GITHUB_TOKEN_STORE', 'redis'),
 

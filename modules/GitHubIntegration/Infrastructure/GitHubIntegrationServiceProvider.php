@@ -2,11 +2,16 @@
 
 namespace Modules\GitHubIntegration\Infrastructure;
 
+use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
 use Illuminate\Contracts\Encryption\Encrypter;
 use Illuminate\Contracts\Foundation\Application;
+use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
+use Illuminate\Foundation\Http\Middleware\TrimStrings;
 use Illuminate\Http\Client\Factory as HttpFactory;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Modules\GitHubIntegration\Application\Ports\GitHubApi;
 use Modules\GitHubIntegration\Application\Ports\GitHubApiFailure;
@@ -38,6 +43,17 @@ final class GitHubIntegrationServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->loadMigrationsFrom(dirname(__DIR__).'/Database/Migrations');
+        $this->loadRoutesFrom(dirname(__DIR__).'/Presentation/routes.php');
+
+        // The webhook reads raw bytes only; spare unauthenticated bodies the
+        // recursive pass of TrimStrings / ConvertEmptyStringsToNull. (The
+        // framework still decodes JSON once when capturing the request: the
+        // body size must also be capped by the web server.)
+        $isWebhook = fn (Request $request): bool => $request->is('webhooks/github');
+        TrimStrings::skipWhen($isWebhook);
+        ConvertEmptyStringsToNull::skipWhen($isWebhook);
+
+        RateLimiter::for('github-webhooks', fn (Request $request) => Limit::perMinute((int) config('github.webhook_rate_per_minute', 600))->by('ip:'.$request->ip()));
     }
 
     private function httpApi(Application $app, Config $config): HttpGitHubApi
