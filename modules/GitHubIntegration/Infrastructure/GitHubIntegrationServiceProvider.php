@@ -5,7 +5,7 @@ namespace Modules\GitHubIntegration\Infrastructure;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Contracts\Cache\Factory as CacheFactory;
 use Illuminate\Contracts\Config\Repository as Config;
-use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Contracts\Encryption\StringEncrypter;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Foundation\Http\Middleware\ConvertEmptyStringsToNull;
 use Illuminate\Foundation\Http\Middleware\TrimStrings;
@@ -74,7 +74,7 @@ final class GitHubIntegrationServiceProvider extends ServiceProvider
         return new HttpGitHubApi(
             $app->make(HttpFactory::class),
             new AppJwt($app->make(GitHubSecrets::class), $clientId !== '' ? $clientId : (string) $config->get('github.app_id')),
-            new InstallationTokenCache($app->make(CacheFactory::class)->store((string) $config->get('github.token_store')), $app->make(Encrypter::class)),
+            new InstallationTokenCache($app->make(CacheFactory::class)->store((string) $config->get('github.token_store')), $app->make(StringEncrypter::class)),
             $app->make(GitHubSecrets::class),
             $clientId,
             (int) $config->get('github.timeout', 10),

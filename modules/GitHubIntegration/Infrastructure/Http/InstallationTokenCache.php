@@ -4,7 +4,7 @@ namespace Modules\GitHubIntegration\Infrastructure\Http;
 
 use Illuminate\Contracts\Cache\Repository;
 use Illuminate\Contracts\Encryption\DecryptException;
-use Illuminate\Contracts\Encryption\Encrypter;
+use Illuminate\Contracts\Encryption\StringEncrypter;
 use Modules\GitHubIntegration\Domain\Secret;
 
 /**
@@ -19,7 +19,7 @@ final class InstallationTokenCache
 
     public function __construct(
         private readonly Repository $store,
-        private readonly Encrypter $encrypter,
+        private readonly StringEncrypter $encrypter,
     ) {}
 
     public function get(int $installationId): ?Secret
