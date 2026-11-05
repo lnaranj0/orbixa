@@ -13,5 +13,6 @@
 ## Gates de entrega
 - [ ] Pruebas de aislamiento entre dos organizaciones sobre PostgreSQL real.
 - [ ] Pruebas de permisos permitidos/denegados para roles y alcances aplicables.
-- [ ] Revisión automática de límites modulares en CI y contratos de integración.
+- [x] Revisión automática de límites modulares en CI y contratos de integración.
+  - Evidencia 06a: PR #7, run 41976730135 (PHP 8.4 y 8.5 con PostgreSQL 18): deptrac sin violaciones, Larastan nivel 8 sin errores, 359 pruebas, provisioning de `orbixa_installation_reader` y reporte de catálogo. 06b debe mantenerlo en verde, incluida la capa `WorkIntegrationContracts`.
 - [ ] Documentar migraciones, rollback, cambios de API y evidencia de funcionamiento.
