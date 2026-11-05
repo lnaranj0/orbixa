@@ -53,6 +53,17 @@ final class GitHubIntegrationServiceProvider extends ServiceProvider
         TrimStrings::skipWhen($isWebhook);
         ConvertEmptyStringsToNull::skipWhen($isWebhook);
 
+        // Each completed setup costs ~20 GitHub calls, some on the App's quota
+        // shared by every organization: a tighter budget than throttle:writes.
+        RateLimiter::for('github-setup', function (Request $request): array {
+            $by = $request->user() !== null ? 'user:'.$request->user()->getAuthIdentifier() : 'ip:'.$request->ip();
+            $organization = $request->route('organization');
+
+            return [
+                Limit::perMinute((int) config('github.setup_per_minute', 5))->by('github-setup:'.$by),
+                Limit::perHour((int) config('github.setup_per_hour', 20))->by('github-setup-hour:'.(is_string($organization) ? 'org:'.$organization : $by)),
+            ];
+        });
         RateLimiter::for('github-webhooks', fn (Request $request) => Limit::perMinute((int) config('github.webhook_rate_per_minute', 600))->by('ip:'.$request->ip()));
     }
 

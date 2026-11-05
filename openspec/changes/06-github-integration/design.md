@@ -37,7 +37,14 @@ Decisiones G-A…G-F y G1–G12 aprobadas el 2026-11-04. Las propusieron los age
 - En el callback (`setup_url`) el `installation_id` de la URL **no es de fiar**. Se confirma:
   1. con el JWT de la App (`GET /app/installations/{id}`), que la instalación existe;
   2. con la autorización OAuth de usuario de la App (user-to-server), que quien vincula tiene acceso real a esa instalación (`GET /user/installations`).
+  3. con ese mismo token, que quien vincula **administra la cuenta** de la instalación: admin activo de la organización (`GET /user/memberships/orgs/{login}`, comprobando también el id de la organización) o, si la cuenta es de usuario, que sea ese usuario (`GET /user`). Tener acceso a un repositorio no basta: si no, un colaborador podría vincular la instalación entera, ver los nombres de repos privados ajenos y ocuparla para la organización legítima (revisión de seguridad, H1; decisión del 2026-11-05).
 - `UNIQUE (installation_external_id)` global: una instalación pertenece a una sola organización. Un segundo intento desde otra organización recibe un error genérico.
+- Notas de la revisión de seguridad del incremento 6:
+  - El `state` también va ligado al usuario. El callback no usa el middleware `auth`: un invitado va al login sin guardar la URL (y su `code`) como `url.intended`. La respuesta lleva `Referrer-Policy: no-referrer` y nginx debe excluir del access log la query de `/integrations/github/callback`.
+  - Cualquier petición al callback consume el `state` pendiente: un tercero solo puede cancelar un setup en curso, nunca vincular nada.
+  - El token OAuth del usuario no se revoca tras usarlo (sería una escritura en GitHub, G9): no se guarda y caduca solo.
+  - Setup y callback tienen su propio límite (5 por minuto por usuario y 20 por hora por organización), porque cada setup completo hace unas 20 llamadas a GitHub, algunas sobre la cuota de la App compartida por todas las organizaciones.
+  - Un repositorio que deja de estar disponible conserva su selección como historial; el webhook (y la indexación de 06b) exigen `available` y la instalación activa.
 - Los repositorios llegan como "disponibles" y solo se indexan los que una persona con `integrations.github.manage` **selecciona** de forma explícita. Se identifican por su id numérico, nunca por el nombre, que cambia al renombrar o transferir.
 
 ## Webhook (G3)
@@ -71,7 +78,7 @@ Decisiones G-A…G-F y G1–G12 aprobadas el 2026-11-04. Las propusieron los age
 ## Orden, reconciliación y saliente (G7–G9)
 - **Orden.** Un cambio solo se aplica si su versión es más nueva que `last_synced_version`. Los upserts van por clave natural.
 - **Reconciliación.** Paginada por cursor, con backoff exponencial con tope y respetando `Retry-After` y `X-RateLimit-*`. Una ejecución activa por repositorio. Hay un botón manual con `integrations.github.manage` y throttle. El `Link` de paginación debe apuntar al mismo host.
-- **Escritura hacia GitHub.** No se implementa ningún escritor. La App pide solo permisos de lectura (metadata, contents, pull_requests, checks). Un test verifica que no hay POST, PATCH, PUT ni DELETE, salvo la emisión de tokens.
+- **Escritura hacia GitHub.** No se implementa ningún escritor. La App pide solo permisos de lectura (metadata, contents, pull_requests, checks y, a nivel de organización, members para comprobar al administrador). Un test verifica que no hay POST, PATCH, PUT ni DELETE, salvo la emisión de tokens.
 
 ## Secretos (G10)
 - La clave privada de la App, el secreto del webhook y el secreto OAuth van en `.secrets/` (permisos 600, fuera de Git) o en el gestor del entorno. **Nunca** en la BD, Git, logs, payloads de jobs, vistas, excepciones ni respuestas.

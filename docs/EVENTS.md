@@ -23,7 +23,7 @@ Los eventos transportan IDs y metadatos mínimos, no credenciales ni texto sensi
 - `team.created`, `team.moved`, `team.archived`, `team.member.assigned`, `team.member.removed`, `project.created`, `project.updated`, `project.member.added`, `project.member.removed`, `project.team.linked`, `project.team.unlinked`, `project.repository.linked`. Payload con solo IDs.
 - `work.item.created`, `work.item.updated`, `work.item.assigned`, `work.item.transitioned`, `work.item.blocked`, `work.item.completed`, `work.item.reopened`.
 - `planning.cycle.created`, `planning.cycle.started`, `planning.cycle.closed`.
-- `github.installation.connected`, `github.repository.linked`, `github.pull_request.updated`, `github.commit.linked`, `github.sync.failed`.
+- `github.installation.connected`, `github.installation.revoked`, `github.repository.selected`, `github.repository.deselected`, `github.repository.linked`, `github.pull_request.updated`, `github.commit.linked`, `github.sync.failed`. Payload con solo IDs; el actor de los eventos que nacen de un webhook es `service` (`integration:github:<installation>`).
 - `spec.change.detected`, `spec.artifact.indexed`, `spec.change.linked`, `spec.reconciliation.required`.
 - `agent.registered`, `agent.assigned`, `agent.execution.reported`, `agent.execution.failed`.
 - `audit.sensitive_access.granted`, `notification.requested`.

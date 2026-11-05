@@ -22,6 +22,11 @@ return [
 
     'client_id' => env('GITHUB_APP_CLIENT_ID'),
 
+    // https://github.com/apps/{slug}: where an installation starts. The App
+    // must request user authorization (OAuth) during installation and use
+    // /integrations/github/callback as its setup URL (G-C).
+    'app_slug' => env('GITHUB_APP_SLUG'),
+
     'timeout' => (int) env('GITHUB_TIMEOUT', 10),
 
     'secrets' => [
@@ -36,6 +41,10 @@ return [
 
     // Per source IP; GitHub delivers from a small set of addresses.
     'webhook_rate_per_minute' => (int) env('GITHUB_WEBHOOK_RATE_PER_MINUTE', 600),
+
+    // Setup start + callback, per user per minute and per organization per hour.
+    'setup_per_minute' => (int) env('GITHUB_SETUP_PER_MINUTE', 5),
+    'setup_per_hour' => (int) env('GITHUB_SETUP_PER_HOUR', 20),
 
     // Installation tokens are cached encrypted (APP_KEY) in this store.
     'token_store' => env('GITHUB_TOKEN_STORE', 'redis'),

@@ -30,4 +30,12 @@ interface GitHubApi
      * @return list<int>
      */
     public function userInstallationIds(Secret $userToken): array;
+
+    /**
+     * User token: whether the user administers the installation's account
+     * (G-C, review H1). Access to one repository is not enough to link the
+     * whole installation. Organization: GET /user/memberships/orgs/{login},
+     * active admin. User account: GET /user is that account.
+     */
+    public function isAccountAdmin(Secret $userToken, GitHubInstallation $installation): bool;
 }

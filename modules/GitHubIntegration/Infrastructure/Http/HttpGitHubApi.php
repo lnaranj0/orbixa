@@ -44,11 +44,12 @@ final class HttpGitHubApi implements GitHubApi
         }
         $body = $this->json($response, 'installation');
         $account = $body['account'] ?? null;
-        if (! is_int($body['id'] ?? null) || ! is_array($account) || ! is_string($account['login'] ?? null) || ! is_string($account['type'] ?? null)) {
+        if (! is_int($body['id'] ?? null) || ! is_array($account) || ! is_int($account['id'] ?? null)
+            || ! is_string($account['login'] ?? null) || ! is_string($account['type'] ?? null)) {
             throw GitHubApiFailure::unexpected('installation');
         }
 
-        return new GitHubInstallation($body['id'], $account['login'], $account['type'], ($body['suspended_at'] ?? null) !== null);
+        return new GitHubInstallation($body['id'], $account['id'], $account['login'], $account['type'], ($body['suspended_at'] ?? null) !== null);
     }
 
     public function installationRepositories(int $installationId, int $page = 1): RepositoryPage
@@ -109,6 +110,27 @@ final class HttpGitHubApi implements GitHubApi
         }
 
         return $ids;
+    }
+
+    public function isAccountAdmin(Secret $userToken, GitHubInstallation $installation): bool
+    {
+        if ($installation->accountType === 'User') {
+            $id = $this->json($this->send('GET', self::API.'/user', 'user', $userToken), 'user')['id'] ?? null;
+
+            return is_int($id) && $id === $installation->accountId;
+        }
+        if ($installation->accountType !== 'Organization' || preg_match('/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,38})$/', $installation->accountLogin) !== 1) {
+            return false;
+        }
+        $response = $this->send('GET', self::API.'/user/memberships/orgs/'.$installation->accountLogin, 'membership', $userToken);
+        if (in_array($response->status(), [403, 404], true)) {
+            return false;
+        }
+        $membership = $this->json($response, 'membership');
+        $organization = $membership['organization'] ?? null;
+
+        return ($membership['state'] ?? null) === 'active' && ($membership['role'] ?? null) === 'admin'
+            && is_array($organization) && ($organization['id'] ?? null) === $installation->accountId;
     }
 
     private function installationToken(int $installationId): Secret

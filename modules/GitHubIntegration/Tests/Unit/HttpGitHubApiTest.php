@@ -8,6 +8,8 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Modules\GitHubIntegration\Application\Ports\GitHubApi;
 use Modules\GitHubIntegration\Application\Ports\GitHubApiFailure;
+use Modules\GitHubIntegration\Application\Ports\GitHubInstallation;
+use Modules\GitHubIntegration\Domain\Secret;
 use Modules\GitHubIntegration\Infrastructure\Http\HttpGitHubApi;
 use Modules\GitHubIntegration\Infrastructure\Http\InstallationTokenCache;
 use Tests\TestCase;
@@ -80,7 +82,7 @@ final class HttpGitHubApiTest extends TestCase
     public function test_installation_is_read_with_a_short_lived_app_jwt(): void
     {
         $this->route('#^GET https://api\.github\.com/app/installations/4242$#', fn () => Http::response([
-            'id' => self::INSTALLATION, 'account' => ['login' => 'acme', 'type' => 'Organization'], 'suspended_at' => null,
+            'id' => self::INSTALLATION, 'account' => ['id' => 777, 'login' => 'acme', 'type' => 'Organization'], 'suspended_at' => null,
         ]));
 
         $installation = $this->api()->installation(self::INSTALLATION);
@@ -166,9 +168,36 @@ final class HttpGitHubApiTest extends TestCase
         $this->api()->exchangeOAuthCode('reused-code');
     }
 
+    public function test_account_admin_is_checked_with_the_user_token(): void
+    {
+        $organization = new GitHubInstallation(self::INSTALLATION, 777, 'acme', 'Organization', false);
+        $membership = ['state' => 'active', 'role' => 'admin', 'organization' => ['id' => 777]];
+        $token = new Secret($this->userToken);
+        $cases = [
+            [200, $membership, true],
+            [200, ['role' => 'member'] + $membership, false],
+            [200, ['state' => 'pending'] + $membership, false],
+            [200, ['organization' => ['id' => 778]] + $membership, false],
+            [404, ['message' => 'Not Found'], false],
+            [403, ['message' => 'Forbidden'], false],
+        ];
+        foreach ($cases as [$status, $body, $expected]) {
+            $this->route('#^GET https://api\.github\.com/user/memberships/orgs/acme$#', fn () => Http::response($body, $status), prepend: true);
+            $this->assertSame($expected, $this->api()->isAccountAdmin($token, $organization), json_encode($body));
+        }
+        Http::assertSent(fn (Request $request) => $request->hasHeader('Authorization', 'Bearer '.$this->userToken));
+
+        $this->route('#^GET https://api\.github\.com/user$#', fn () => Http::response(['id' => 777]));
+        $this->assertTrue($this->api()->isAccountAdmin($token, new GitHubInstallation(self::INSTALLATION, 777, 'acme', 'User', false)));
+        $this->assertFalse($this->api()->isAccountAdmin($token, new GitHubInstallation(self::INSTALLATION, 778, 'acme', 'User', false)));
+        // A login that is not a GitHub login never reaches a URL.
+        $this->assertFalse($this->api()->isAccountAdmin($token, new GitHubInstallation(self::INSTALLATION, 777, '../repos', 'Organization', false)));
+        Http::assertNotSent(fn (Request $request) => str_contains($request->url(), '..'));
+    }
+
     public function test_only_reads_and_token_issuance_reach_github(): void
     {
-        $this->route('#^GET https://api\.github\.com/app/installations/#', fn () => Http::response(['id' => self::INSTALLATION, 'account' => ['login' => 'acme', 'type' => 'User']]));
+        $this->route('#^GET https://api\.github\.com/app/installations/#', fn () => Http::response(['id' => self::INSTALLATION, 'account' => ['id' => 777, 'login' => 'acme', 'type' => 'User']]));
         $this->route('#^GET https://api\.github\.com/#', fn () => Http::response(['repositories' => [], 'installations' => []]));
         $this->route('#^POST https://github\.com/login/oauth/access_token$#', fn () => Http::response(['access_token' => $this->userToken]));
 

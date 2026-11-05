@@ -5,6 +5,8 @@ use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
 use Modules\Access\Contracts\AccessDenied;
+use Modules\GitHubIntegration\Contracts\GitHubOperationDenied;
+use Modules\GitHubIntegration\Contracts\GitHubRepositoryNotFound;
 use Modules\IdentityTenancy\Contracts\MembershipChangeDenied;
 use Modules\IdentityTenancy\Contracts\MembershipReferenceInvalid;
 use Modules\Monitoring\Contracts\GrantNotFound;
@@ -97,6 +99,9 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->map(CycleNotFound::class, fn (CycleNotFound $e) => new NotFoundHttpException(previous: $e));
         $exceptions->map(PlanningOperationDenied::class, fn (PlanningOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
         $exceptions->map(PlanningRuleViolation::class, fn (PlanningRuleViolation $e) => new UnprocessableEntityHttpException($e->getMessage(), $e));
+
+        $exceptions->map(GitHubOperationDenied::class, fn (GitHubOperationDenied $e) => new AccessDeniedHttpException(previous: $e));
+        $exceptions->map(GitHubRepositoryNotFound::class, fn (GitHubRepositoryNotFound $e) => new NotFoundHttpException(previous: $e));
 
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),

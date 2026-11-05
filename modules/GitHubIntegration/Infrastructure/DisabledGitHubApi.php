@@ -30,4 +30,9 @@ final class DisabledGitHubApi implements GitHubApi
     {
         throw GitHubApiFailure::notConfigured('driver');
     }
+
+    public function isAccountAdmin(Secret $userToken, GitHubInstallation $installation): bool
+    {
+        throw GitHubApiFailure::notConfigured('driver');
+    }
 }
